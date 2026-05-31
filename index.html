@@ -17,7 +17,7 @@
         .btn-sec { background: #333; border: 1px solid #444; }
         .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 10px; }
         .room-title { font-size: 22px; color: #e50914; font-weight: bold; letter-spacing: 2px; }
-        .users-count { background: #0277bd; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px; margin-left: 5px; }
+        .users-count { background: #2e7d32; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px; margin-left: 5px; }
         .role-section { margin-bottom: 15px; }
         .active-role { background: #e50914 !important; border-color: #e50914; }
         .chat-card { background: #151515; border: 1px solid #222; border-radius: 12px; margin-top: 20px; display: none; text-align: right; padding: 15px; }
@@ -28,7 +28,15 @@
         .chat-input-row { display: flex; gap: 10px; }
         .chat-input-row input { margin-bottom: 0; flex-grow: 1; text-align: right; }
         .chat-input-row button { margin: 0; padding: 10px 20px; }
-        .timer-card { background: #222; padding: 10px; border-radius: 8px; color: #ff9800; font-size: 18px; margin: 10px 0; }
+        .status-card { background: #222; padding: 10px; border-radius: 8px; color: #4caf50; font-size: 16px; margin: 10px 0; font-weight: bold; }
+        
+        /* تنسيق الترجمة لتظهر بشكل احترافي فوق الفيديو */
+        video::cue {
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            font-size: 18px;
+            font-family: Arial, sans-serif;
+        }
     </style>
 </head>
 <body>
@@ -56,20 +64,25 @@
 
     <div class="card" id="broadcastCard" style="display:none;">
         <div class="room-title">🎥 رقم الغرفة: <span id="roomCodeDisplay">----</span></div>
-        <div id="timerCard" class="timer-card" style="display:none;">
-            ⏳ صلاحية الغرفة: <span id="timerDisplay">05:00</span>
+        <div id="statusCard" class="status-card">
+            🟢 الغرفة مستقرة وجاهزة للسهرة بالكامل
         </div>
         <div id="adminInputs" style="margin-top: 15px;">
-            <input type="text" id="videoUrl" placeholder="🔗 ألصق رابط الفيلم هنا...">
+            <input type="text" id="videoUrl" placeholder="🔗 ألصق رابط الفيلم (mp4) هنا...">
             <br>
-            <button onclick="loadVideo()">▶️ بث الفيلم للطرفين</button>
+            <input type="text" id="subtitleUrl" placeholder="✍️ ألصق رابط الترجمة (vtt) المستخرج هنا (اختياري)...">
+            <br>
+            <button onclick="loadVideo()">▶️ بث الفيلم والترجمة للطرفين</button>
         </div>
         <div id="viewerInputs" style="display:none; color: #aaa; margin-top:10px;">
-            💖 انتظري مصطفى ليقوم ببث الفيلم...
+            💖 انتظري مصطفى ليقوم ببث الفيلم والترجمة...
         </div>
     </div>
 
-    <video id="videoPlayer" playsinline controls></video>
+    <!-- مشغل الفيديو مع دعم مسار الترجمة المباشر -->
+    <video id="videoPlayer" playsinline controls>
+        <track id="videoTrack" kind="subtitles" srclang="ar" label="العربية" default>
+    </video>
 
     <div class="chat-card" id="chatCard">
         <div style="font-weight: bold; margin-bottom: 8px; color: #aaa; font-size: 14px;">💬 دردشة السينما</div>
@@ -82,7 +95,7 @@
 </div>
 
 <script>
-    // ========== إعدادات Firebase (من مشروعك cenama-9093f) ==========
+    // ========== إعدادات Firebase مالتك ==========
     const firebaseConfig = {
         apiKey: "AIzaSyCu62w7jzvxYvxPFdd65FbACIYohoXQ3Yk",
         authDomain: "cenama-9093f.firebaseapp.com",
@@ -94,62 +107,28 @@
         measurementId: "G-DLD3BQCFCR"
     };
 
-    // ========== تهيئة Firebase ==========
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // ========== عناصر الصفحة ==========
     const video = document.getElementById('videoPlayer');
+    const videoTrack = document.getElementById('videoTrack');
     const countDisplay = document.getElementById('countDisplay');
     const chatCard = document.getElementById('chatCard');
     const chatBox = document.getElementById('chatBox');
     const chatInput = document.getElementById('chatInput');
     const joinStatus = document.getElementById('joinStatus');
-    const timerCard = document.getElementById('timerCard');
-    const timerDisplay = document.getElementById('timerDisplay');
     const roomCodeDisplay = document.getElementById('roomCodeDisplay');
 
     let myRole = 'ADMIN';
     let currentRoomCode = null;
     let isSyncing = false;
-    let timerInterval = null;
-    let roomExpired = false;
-    const ROOM_TIMEOUT_SEC = 300;
-    let remainingSeconds = ROOM_TIMEOUT_SEC;
 
-    // ========== دوال مساعدة ==========
     function setRole(role) {
         myRole = role;
         document.getElementById('adminBtn').className = role === 'ADMIN' ? 'active-role' : 'btn-sec';
         document.getElementById('viewerBtn').className = role === 'VIEWER' ? 'active-role' : 'btn-sec';
         document.getElementById('adminAction').style.display = role === 'ADMIN' ? 'block' : 'none';
         document.getElementById('viewerAction').style.display = role === 'VIEWER' ? 'block' : 'none';
-    }
-
-    function startExpiryTimer() {
-        if (timerInterval) clearInterval(timerInterval);
-        remainingSeconds = ROOM_TIMEOUT_SEC;
-        roomExpired = false;
-        timerCard.style.display = 'block';
-        updateTimerDisplay();
-        timerInterval = setInterval(() => {
-            remainingSeconds--;
-            updateTimerDisplay();
-            if (remainingSeconds <= 0) {
-                clearInterval(timerInterval);
-                roomExpired = true;
-                timerDisplay.textContent = "انتهت ⚠️";
-                timerCard.style.color = "#f44336";
-                appendSystemMessage("⚠️ صلاحية الغرفة انتهت. أنشئ غرفة جديدة.");
-                database.ref('rooms/' + currentRoomCode).remove();
-            }
-        }, 1000);
-    }
-
-    function updateTimerDisplay() {
-        const m = Math.floor(remainingSeconds / 60);
-        const s = remainingSeconds % 60;
-        timerDisplay.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     function showCinemaLayout(code) {
@@ -162,23 +141,23 @@
         chatCard.style.display = 'block';
     }
 
-    // ========== إنشاء غرفة (متحكم) ==========
+    // ========== إنشاء غرفة (مصطفى) ==========
     function createNewRoom() {
         currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
         database.ref('rooms/' + currentRoomCode).set({
             videoUrl: '',
+            subtitleUrl: '',
             state: 'pause',
             currentTime: 0,
             createdAt: firebase.database.ServerValue.TIMESTAMP
         });
 
-        // متابعة المشاهد
         database.ref('rooms/' + currentRoomCode + '/viewerPresent').on('value', snap => {
             countDisplay.textContent = snap.val() ? '2' : '1';
             countDisplay.style.background = snap.val() ? '#2e7d32' : '#0277bd';
+            if(snap.val()) appendSystemMessage("💕 نونة دخلت الغرفة الآن!");
         });
 
-        // متابعة الدردشة
         database.ref('rooms/' + currentRoomCode + '/chat').on('child_added', snap => {
             const msg = snap.val();
             if (msg.sender !== 'ADMIN') appendMessage(msg.text, 'partner');
@@ -186,42 +165,59 @@
 
         showCinemaLayout(currentRoomCode);
         video.controls = true;
-        startExpiryTimer();
     }
 
-    // ========== انضمام (مشاهدة) ==========
+    // ========== انضمام (نونة) ==========
     function joinExistingRoom() {
         const code = document.getElementById('roomCodeInput').value.trim();
         if (!code) return alert('الرجاء إدخال رقم الغرفة!');
 
-        joinStatus.textContent = 'جاري البحث...';
+        joinStatus.textContent = 'جاري البحث عن غرفتكم...';
         database.ref('rooms/' + code).once('value', snap => {
             if (!snap.exists()) {
-                joinStatus.textContent = '❌ الغرفة غير موجودة';
+                joinStatus.textContent = '❌ الغرفة غير موجودة أو انتهت';
                 return;
             }
 
             currentRoomCode = code;
             database.ref('rooms/' + code + '/viewerPresent').set(true);
 
-            // متابعة حالة الفيديو
+            // مزامنة دقيقة للحالة والوقت
             database.ref('rooms/' + code + '/state').on('value', s => {
-                if (isSyncing) return;
+                if (isSyncing || myRole === 'ADMIN') return;
                 const state = s.val();
                 database.ref('rooms/' + code + '/currentTime').once('value', t => {
                     const time = t.val() || 0;
-                    if (state === 'play') { video.currentTime = time; video.play(); }
-                    else if (state === 'pause') video.pause();
-                    else if (state === 'seek') video.currentTime = time;
+                    isSyncing = true;
+                    if (state === 'play') {
+                        video.currentTime = time;
+                        video.play().catch(() => {});
+                    } else if (state === 'pause') {
+                        video.pause();
+                        video.currentTime = time;
+                    } else if (state === 'seek') {
+                        video.currentTime = time;
+                    }
+                    setTimeout(() => isSyncing = false, 200);
                 });
             });
 
-            // متابعة رابط الفيديو
+            // مراقبة رابط الفيديو وتحديثه فوراً لنونة
             database.ref('rooms/' + code + '/videoUrl').on('value', s => {
-                if (s.val()) { video.src = s.val(); video.load(); }
+                if (s.val() && video.src !== s.val()) {
+                    video.src = s.val();
+                    video.load();
+                }
             });
 
-            // متابعة الدردشة
+            // مراقبة رابط الترجمة وتحديثه فوراً لنونة
+            database.ref('rooms/' + code + '/subtitleUrl').on('value', s => {
+                if (s.val()) {
+                    videoTrack.src = s.val();
+                    videoTrack.track.mode = "showing";
+                }
+            });
+
             database.ref('rooms/' + code + '/chat').on('child_added', snap => {
                 const msg = snap.val();
                 if (msg.sender !== 'VIEWER') appendMessage(msg.text, 'partner');
@@ -230,13 +226,13 @@
             showCinemaLayout(code);
             document.getElementById('adminInputs').style.display = 'none';
             document.getElementById('viewerInputs').style.display = 'block';
-            video.controls = false;
-            joinStatus.textContent = '✅ متصلة';
+            video.controls = false; // التحكم بالكامل لمصطفى لمنع التضارب
+            joinStatus.textContent = '✅ متصلة بمصطفى';
             joinStatus.style.color = '#4caf50';
         });
     }
 
-    // ========== دردشة ==========
+    // ========== نظام الدردشة ==========
     function sendChatMessage() {
         const text = chatInput.value.trim();
         if (text && currentRoomCode) {
@@ -266,43 +262,61 @@
         chatBox.appendChild(d);
     }
 
-    // ========== بث الفيديو ==========
+    // ========== تحميل البث والترجمة (مصطفى) ==========
     function loadVideo() {
-        const url = document.getElementById('videoUrl').value;
+        const url = document.getElementById('videoUrl').value.trim();
+        const subUrl = document.getElementById('subtitleUrl').value.trim();
         if (url && myRole === 'ADMIN' && currentRoomCode) {
             video.src = url;
+            if (subUrl) {
+                videoTrack.src = subUrl;
+                videoTrack.track.mode = "showing";
+            }
             video.load();
-            database.ref('rooms/' + currentRoomCode).update({ videoUrl: url, state: 'pause' });
+            database.ref('rooms/' + currentRoomCode).update({ 
+                videoUrl: url, 
+                subtitleUrl: subUrl,
+                state: 'pause',
+                currentTime: 0
+            });
         }
     }
 
-    // ========== أحداث التحكم ==========
+    // ========== مستمعات الأحداث الدقيقة للتزامن ==========
     video.addEventListener('play', () => {
         if (!isSyncing && myRole === 'ADMIN' && currentRoomCode) {
-            isSyncing = true;
             database.ref('rooms/' + currentRoomCode).update({ state: 'play', currentTime: video.currentTime });
-            setTimeout(() => isSyncing = false, 100);
-        }
-    });
-    video.addEventListener('pause', () => {
-        if (!isSyncing && myRole === 'ADMIN' && currentRoomCode) {
-            isSyncing = true;
-            database.ref('rooms/' + currentRoomCode).update({ state: 'pause' });
-            setTimeout(() => isSyncing = false, 100);
-        }
-    });
-    video.addEventListener('seeked', () => {
-        if (!isSyncing && myRole === 'ADMIN' && currentRoomCode) {
-            isSyncing = true;
-            database.ref('rooms/' + currentRoomCode).update({ state: 'seek', currentTime: video.currentTime });
-            setTimeout(() => isSyncing = false, 100);
         }
     });
 
-    // تنظيف عند الخروج
+    video.addEventListener('pause', () => {
+        if (!isSyncing && myRole === 'ADMIN' && currentRoomCode) {
+            database.ref('rooms/' + currentRoomCode).update({ state: 'pause', currentTime: video.currentTime });
+        }
+    });
+
+    video.addEventListener('seeked', () => {
+        if (!isSyncing && myRole === 'ADMIN' && currentRoomCode) {
+            database.ref('rooms/' + currentRoomCode).update({ state: 'seek', currentTime: video.currentTime });
+        }
+    });
+
+    // تحديث توقيت السيرفر بشكل دوري طالما الفيديو يشتغل لضمان عدم حدوث فروقات
+    video.addEventListener('timeupdate', () => {
+        if (!isSyncing && myRole === 'ADMIN' && currentRoomCode && !video.paused) {
+            // نحدث الوقت كل 3 ثوانٍ تقريباً حتى لا نضغط على الـ Database الطلبات
+            if (Math.floor(video.currentTime) % 3 === 0) {
+                database.ref('rooms/' + currentRoomCode).update({ currentTime: video.currentTime });
+            }
+        }
+    });
+
     window.addEventListener('beforeunload', () => {
         if (myRole === 'VIEWER' && currentRoomCode) {
             database.ref('rooms/' + currentRoomCode + '/viewerPresent').set(false);
+        } else if (myRole === 'ADMIN' && currentRoomCode) {
+            // إذا خرج مصطفى يحذف الغرفة للتنظيف
+            database.ref('rooms/' + currentRoomCode).remove();
         }
     });
 </script>
