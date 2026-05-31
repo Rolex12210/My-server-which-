@@ -27,10 +27,10 @@
         .chat-input-row { display: flex; gap: 10px; }
         .chat-input-row input { margin-bottom: 0; flex-grow: 1; text-align: right; }
         .chat-input-row button { margin: 0; padding: 10px 20px; }
+        .timer-card { background: #222; padding: 10px; border-radius: 8px; color: #ff9800; font-size: 18px; margin: 10px 0; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <h1>سينما الحب 🍿❤️</h1>
     <div id="usersBadge" class="badge" style="background:#333; display:none;">
@@ -42,22 +42,22 @@
             <button id="adminBtn" class="active-role" onclick="setRole('ADMIN')">أنا المتحكم (مصطفى)</button>
             <button id="viewerBtn" class="btn-sec" onclick="setRole('VIEWER')">أنا المشاهد (نونة)</button>
         </div>
-        
         <div id="adminAction">
             <button onclick="createNewRoom()">إنشاء غرفة جديدة برقم قصير</button>
-            <p style="font-size:12px; color:#aaa;">ملاحظة: سيُعاد استخدام آخر غرفة أنشأتها إن وجدت</p>
         </div>
-        
         <div id="viewerAction" style="display:none; margin-top: 15px;">
             <input type="number" id="roomCodeInput" placeholder="ادخلي رقم الغرفة المتكون من 4 أرقام...">
             <br>
             <button onclick="joinExistingRoom()">دخول الغرفة والاتصال بمصطفى</button>
-            <p id="connectionStatus" style="font-size:12px; color:#ff9800; margin-top:5px;"></p>
+            <p id="joinStatus" style="font-size:13px; color:#aaa;"></p>
         </div>
     </div>
 
     <div class="card" id="broadcastCard" style="display:none;">
-        <div class="room-title">رقم غرفتكم الحالي هو: <span id="roomCodeDisplay">----</span></div>
+        <div class="room-title" id="roomTitleDisplay">رقم الغرفة: ----</div>
+        <div id="timerCard" class="timer-card" style="display:none;">
+            ⏳ صلاحية الغرفة: <span id="timerDisplay">05:00</span>
+        </div>
         <div id="adminInputs" style="margin-top: 15px;">
             <input type="text" id="videoUrl" placeholder="الزق رابط الفيلم المباشر هنا...">
             <br>
@@ -81,33 +81,17 @@
 </div>
 
 <script>
-    const video = document.getElementById('videoPlayer');
-    const statusBadge = document.getElementById('usersBadge');
-    const countDisplay = document.getElementById('countDisplay');
-    const chatCard = document.getElementById('chatCard');
-    const chatBox = document.getElementById('chatBox');
-    const chatInput = document.getElementById('chatInput');
-    
-    let peer = null;
-    let conn = null;
-    let myRole = 'ADMIN';
-    let isSyncing = false;
-    let heartbeatInterval = null;
-    let joinAttempts = 0;
-    const MAX_JOIN_ATTEMPTS = 3;
-
-    // الإعدادات المُحسَّنة مع خوادم STUN/TURN
+    // ========== إعدادات PeerJS مع خادم إشارات بديل (peer.ee) ==========
     const PEER_CONFIG = {
-        host: '0.peerjs.com',
+        host: 'peer.ee',          // خادم بديل مستقر
         port: 443,
         path: '/',
         secure: true,
-        debug: 1,
         config: {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
-                { 
+                {
                     urls: 'turn:openrelay.metered.ca:443',
                     username: 'openrelayproject',
                     credential: 'openrelayproject'
@@ -121,6 +105,27 @@
         }
     };
 
+    const video = document.getElementById('videoPlayer');
+    const statusBadge = document.getElementById('usersBadge');
+    const countDisplay = document.getElementById('countDisplay');
+    const chatCard = document.getElementById('chatCard');
+    const chatBox = document.getElementById('chatBox');
+    const chatInput = document.getElementById('chatInput');
+    const joinStatus = document.getElementById('joinStatus');
+    const timerCard = document.getElementById('timerCard');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const roomTitleDisplay = document.getElementById('roomTitleDisplay');
+
+    let peer = null;
+    let conn = null;
+    let myRole = 'ADMIN';
+    let isSyncing = false;
+    let currentRoomCode = null;
+    let timerInterval = null;
+    let roomExpired = false;         // تصبح true بعد 5 دقائق
+    const ROOM_TIMEOUT_SEC = 300;    // 5 دقائق = 300 ثانية
+    let remainingSeconds = ROOM_TIMEOUT_SEC;
+
     function setRole(role) {
         myRole = role;
         document.getElementById('adminBtn').className = role === 'ADMIN' ? 'active-role' : 'btn-sec';
@@ -129,125 +134,137 @@
         document.getElementById('viewerAction').style.display = role === 'VIEWER' ? 'block' : 'none';
     }
 
-    function startHeartbeat(peerInstance) {
-        if (heartbeatInterval) clearInterval(heartbeatInterval);
-        heartbeatInterval = setInterval(() => {
-            if (peerInstance && !peerInstance.destroyed) {
-                try { peerInstance.socket.send({ type: 'HEARTBEAT' }); } catch(e) {}
+    // ---------- مؤقت الصلاحية (للمتحكم فقط) ----------
+    function startExpiryTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        remainingSeconds = ROOM_TIMEOUT_SEC;
+        roomExpired = false;
+        timerCard.style.display = 'block';
+        updateTimerDisplay();
+
+        timerInterval = setInterval(() => {
+            remainingSeconds--;
+            updateTimerDisplay();
+
+            if (remainingSeconds <= 0) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                roomExpired = true;
+                timerDisplay.textContent = "انتهت الصلاحية";
+                timerCard.style.color = "#f44336";
+                appendSystemMessage("⚠️ انتهت صلاحية الغرفة، لن يتمكن أحد من الدخول. أنشئ غرفة جديدة إذا أردت.");
             }
-        }, 15000);
+        }, 1000);
     }
 
-    // إنشاء غرفة (كمتحكم)
-    function createNewRoom() {
-        let shortId = localStorage.getItem('lastRoomId');
-        if (!shortId) {
-            shortId = Math.floor(1000 + Math.random() * 9000).toString();
-            localStorage.setItem('lastRoomId', shortId);
-        }
+    function updateTimerDisplay() {
+        const mins = Math.floor(remainingSeconds / 60);
+        const secs = remainingSeconds % 60;
+        timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
 
-        if (peer && !peer.destroyed) {
-            peer.destroy();
+    function stopExpiryTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
         }
-        peer = new Peer(shortId, PEER_CONFIG);
-        
+    }
+
+    // ---------- إنشاء غرفة جديدة (كمتحكم) ----------
+    function createNewRoom() {
+        stopExpiryTimer();
+        if (peer && !peer.destroyed) peer.destroy();
+        // توليد رمز عشوائي من 4 أرقام
+        currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
+        roomExpired = false;
+
+        peer = new Peer(currentRoomCode, PEER_CONFIG);
+
         peer.on('open', (id) => {
             showCinemaLayout(id);
             video.controls = true;
             startHeartbeat(peer);
+            startExpiryTimer();   // بدء المؤقت
         });
 
         peer.on('connection', (connection) => {
+            if (roomExpired) {
+                connection.close();  // ارفض الاتصال إذا انتهت الصلاحية
+                return;
+            }
             conn = connection;
             setupConnection();
         });
 
         peer.on('error', (err) => {
-            if(err.type === 'unavailable-id') {
-                // إذا كان الرمز محجوزاً نولد غيره
-                localStorage.removeItem('lastRoomId');
-                createNewRoom();
+            if (err.type === 'unavailable-id') {
+                createNewRoom();  // حاول مجدداً
             } else {
-                console.error("خطأ Peer:", err);
-                alert("حدث خطأ في الاتصال. تأكد من اتصالك بالإنترنت وحاول مجدداً.");
+                alert("خطأ في الاتصال، تأكد من الإنترنت وحاول مجدداً.");
             }
         });
     }
 
-    // الانضمام كمشاهدة
-    function joinExistingRoom(retry = false) {
-        const roomCode = document.getElementById('roomCodeInput').value.trim();
-        if (!roomCode) return alert("الرجاء إدخال رقم الغرفة أولاً!");
+    // ---------- انضمام كمشاهدة ----------
+    function joinExistingRoom() {
+        const code = document.getElementById('roomCodeInput').value.trim();
+        if (!code) return alert("الرجاء إدخال رقم الغرفة!");
 
-        const statusEl = document.getElementById('connectionStatus');
-        if (!retry) joinAttempts = 0;
-        joinAttempts++;
-        statusEl.textContent = `محاولة الاتصال ${joinAttempts}/${MAX_JOIN_ATTEMPTS}...`;
-        statusEl.style.color = '#ff9800';
+        joinStatus.textContent = "جاري الاتصال...";
+        joinStatus.style.color = "#ff9800";
 
-        if (peer && !peer.destroyed) {
-            peer.destroy();
-        }
+        if (peer && !peer.destroyed) peer.destroy();
+
         peer = new Peer(PEER_CONFIG);
-        
         peer.on('open', () => {
             startHeartbeat(peer);
-            conn = peer.connect(roomCode, { reliable: true, serialization: 'json' });
-            
+            conn = peer.connect(code, { reliable: true });
+
             conn.on('open', () => {
+                joinStatus.textContent = "";
                 setupConnection();
-                showCinemaLayout(roomCode);
+                showCinemaLayout(code);
                 document.getElementById('adminInputs').style.display = 'none';
                 document.getElementById('viewerInputs').style.display = 'block';
                 video.controls = false;
-                statusEl.textContent = 'تم الاتصال!';
-                statusEl.style.color = '#4caf50';
-                joinAttempts = 0;
             });
 
             conn.on('error', (err) => {
-                console.warn("فشل مؤقت:", err);
-                if (joinAttempts < MAX_JOIN_ATTEMPTS) {
-                    setTimeout(() => joinExistingRoom(true), 2000);
-                } else {
-                    statusEl.textContent = 'فشل الاتصال. تأكدي من أن مصطفى ما يزال متصلاً ومن صحة الرمز.';
-                    statusEl.style.color = '#f44336';
-                    alert("لم نتمكن من الاتصال. تأكدي من أن مصطفى فتح الغرفة للتو وأن الرمز صحيح.");
-                    joinAttempts = 0;
-                }
+                console.error(err);
+                joinStatus.textContent = "فشل الاتصال: الغرفة غير موجودة أو انتهت صلاحيتها.";
+                joinStatus.style.color = "#f44336";
             });
         });
 
         peer.on('error', (err) => {
-            if (joinAttempts < MAX_JOIN_ATTEMPTS) {
-                setTimeout(() => joinExistingRoom(true), 2000);
-            } else {
-                statusEl.textContent = 'خطأ في الشبكة. حاولي لاحقاً.';
-                statusEl.style.color = '#f44336';
-            }
+            joinStatus.textContent = "خطأ في الشبكة، حاولي لاحقاً.";
+            joinStatus.style.color = "#f44336";
         });
     }
 
+    // ---------- عرض واجهة السينما ----------
     function showCinemaLayout(roomCode) {
         document.getElementById('setupCard').style.display = 'none';
         document.getElementById('broadcastCard').style.display = 'block';
-        document.getElementById('roomCodeDisplay').innerText = roomCode;
+        roomTitleDisplay.textContent = `رقم غرفتكم الحالي هو: ${roomCode}`;
         statusBadge.style.display = 'inline-block';
         countDisplay.innerText = "1";
         video.style.display = 'block';
         chatCard.style.display = 'block';
     }
 
+    // ---------- إعداد قناة البيانات ----------
     function setupConnection() {
-        countDisplay.innerText = "2"; 
-        countDisplay.style.background = "#2e7d32"; 
+        countDisplay.innerText = "2";
+        countDisplay.style.background = "#2e7d32";
         appendSystemMessage("تم الاتصال بنجاح! السهرة بدأت 🎬❤️");
 
         conn.on('data', (data) => {
             if (data.type === 'CHAT') {
                 appendMessage(data.text, 'partner');
-            } 
-            else if (myRole === 'VIEWER') {
+            } else if (data.type === 'PING') {
+                // تجاهل
+            } else if (myRole === 'VIEWER') {
                 isSyncing = true;
                 if (data.type === 'PLAY') { video.currentTime = data.time; video.play(); }
                 else if (data.type === 'PAUSE') { video.pause(); }
@@ -264,47 +281,60 @@
         });
     }
 
+    function startHeartbeat(peerInstance) {
+        if (window.heartbeatInterval) clearInterval(window.heartbeatInterval);
+        window.heartbeatInterval = setInterval(() => {
+            if (peerInstance && !peerInstance.destroyed) {
+                try { peerInstance.socket.send({ type: 'PING' }); } catch(e) {}
+            }
+            if (conn && conn.open) {
+                try { conn.send({ type: 'PING' }); } catch(e) {}
+            }
+        }, 8000);
+    }
+
+    // ---------- دردشة ----------
     function sendChatMessage() {
         const text = chatInput.value.trim();
         if (text) {
-            if (conn && conn.open) {
-                conn.send({ type: 'CHAT', text: text });
-            }
+            if (conn && conn.open) conn.send({ type: 'CHAT', text: text });
             appendMessage(text, 'me');
             chatInput.value = '';
         }
     }
 
-    function handleChatKey(e) {
-        if (e.key === 'Enter') sendChatMessage();
-    }
+    function handleChatKey(e) { if (e.key === 'Enter') sendChatMessage(); }
 
     function appendMessage(text, sender) {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `msg ${sender}`;
-        msgDiv.innerText = text;
-        chatBox.appendChild(msgDiv);
+        const div = document.createElement('div');
+        div.className = `msg ${sender}`;
+        div.innerText = text;
+        chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     function appendSystemMessage(text) {
-        const sysDiv = document.createElement('div');
-        sysDiv.style.color = "#4caf50";
-        sysDiv.style.fontSize = "12px";
-        sysDiv.style.textAlign = "center";
-        sysDiv.style.margin = "5px 0";
-        sysDiv.innerText = text;
-        chatBox.appendChild(sysDiv);
+        const div = document.createElement('div');
+        div.style.color = "#4caf50";
+        div.style.fontSize = "12px";
+        div.style.textAlign = "center";
+        div.style.margin = "5px 0";
+        div.innerText = text;
+        chatBox.appendChild(div);
     }
 
+    // ---------- مزامنة الفيديو ----------
     video.addEventListener('play', () => {
-        if (!isSyncing && conn && conn.open && myRole === 'ADMIN') conn.send({ type: 'PLAY', time: video.currentTime });
+        if (!isSyncing && conn && conn.open && myRole === 'ADMIN')
+            conn.send({ type: 'PLAY', time: video.currentTime });
     });
     video.addEventListener('pause', () => {
-        if (!isSyncing && conn && conn.open && myRole === 'ADMIN') conn.send({ type: 'PAUSE' });
+        if (!isSyncing && conn && conn.open && myRole === 'ADMIN')
+            conn.send({ type: 'PAUSE' });
     });
     video.addEventListener('seeking', () => {
-        if (!isSyncing && conn && conn.open && myRole === 'ADMIN') conn.send({ type: 'SEEK', time: video.currentTime });
+        if (!isSyncing && conn && conn.open && myRole === 'ADMIN')
+            conn.send({ type: 'SEEK', time: video.currentTime });
     });
 
     function loadVideo() {
