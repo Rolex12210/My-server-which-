@@ -6,171 +6,167 @@
     <title>سينما الحب 🍿❤️</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
-        body {
-            background-color: #111;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        h1 { color: #e50914; font-size: 26px; margin-bottom: 10px; }
-        video {
-            width: 100%;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
-            background: #000;
-            margin-top: 15px;
-        }
-        .controls-box {
-            margin-top: 15px;
-            background: #222;
-            padding: 15px;
-            border-radius: 8px;
-        }
-        input {
-            width: 85%;
-            padding: 12px;
-            border-radius: 6px;
-            border: 1px solid #444;
-            background: #333;
-            color: white;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        button {
-            padding: 10px 20px;
-            background: #e50914;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            margin: 5px;
-        }
-        .btn-secondary { background: #444; }
-        .status-badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            background: #333;
-            margin-top: 10px;
-        }
-        .room-section {
-            background: #1a1a1a;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            border: 1px dashed #444;
-        }
+        body { background-color: #111; color: #fff; font-family: Arial, sans-serif; text-align: center; padding: 20px; margin: 0; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #e50914; font-size: 26px; margin-bottom: 5px; }
+        video { width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.5); background: #000; margin-top: 15px; display: none; }
+        .card { background: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333; margin-top: 15px; }
+        input { width: 80%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; margin-bottom: 12px; text-align: center; font-size: 16px; }
+        button { padding: 12px 24px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin: 5px; }
+        .btn-sec { background: #333; border: 1px solid #444; }
+        .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 10px; }
+        .room-title { font-size: 22px; color: #e50914; font-weight: bold; letter-spacing: 2px; }
+        .users-count { background: #0277bd; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px; margin-left: 5px; }
+        .role-section { margin-bottom: 15px; }
+        .active-role { background: #e50914 !important; border-color: #e50914; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>سينما الحب 🍿❤️</h1>
-    
-    <div class="room-section">
-        <div id="myIdDisplay">جاري إنشاء الغرفة...</div>
-        <div style="margin-top: 8px;">
-            <input type="text" id="peerIdInput" placeholder="ادخل معرف غرفة حبيبتك هنا للاتصال..." style="width: 70%; margin-bottom: 0; padding: 8px;">
-            <button onclick="connectToPeer()" style="padding: 8px 15px;">اتصال</button>
+    <div id="usersBadge" class="badge" style="background:#333; display:none;">
+        المتواجدون حالياً بالغرفة: <span id="countDisplay" class="users-count">1</span>
+    </div>
+
+    <div class="card" id="setupCard">
+        <div class="role-section">
+            <button id="adminBtn" class="active-role" onclick="setRole('ADMIN')">أنا المتحكم (مصطفى)</button>
+            <button id="viewerBtn" class="btn-sec" onclick="setRole('VIEWER')">أنا المشاهد (لجين)</button>
+        </div>
+        
+        <div id="adminAction">
+            <button onclick="createNewRoom()">إنشاء غرفة جديدة برقم قصير</button>
+        </div>
+        
+        <div id="viewerAction" style="display:none; margin-top: 15px;">
+            <input type="number" id="roomCodeInput" placeholder="ادخلي رقم الغرفة المتكون من 4 أرقام...">
+            <br>
+            <button onclick="joinExistingRoom()">دخول الغرفة والاتصال بمصطفى</button>
         </div>
     </div>
 
-    <video id="videoPlayer" controls playsinline></video>
-
-    <div class="controls-box">
-        <input type="text" id="videoUrl" placeholder="الزق رابط الفيلم المباشر هنا (mp4)...">
-        <br>
-        <button onclick="loadVideo()">تحديث الفيلم للطرفين</button>
-        <br>
-        <div class="status-badge" id="status">جاري تشغيل النظام اللحظي...</div>
+    <div class="card" id="broadcastCard" style="display:none;">
+        <div class="room-title">رقم غرفتكم الحالي هو: <span id="roomCodeDisplay">----</span></div>
+        <div id="adminInputs" style="margin-top: 15px;">
+            <input type="text" id="videoUrl" placeholder="الزق رابط الفيلم المباشر المستخرج من الحاسبة هنا...">
+            <br>
+            <button onclick="loadVideo()">بث وتحديث الفيلم للطرفين</button>
+        </div>
+        <div id="viewerInputs" style="display:none; color: #aaa; margin-top:10px;">
+            مرحباً لُجين! مصطفى يقوم بالتحكم بالفيلم الآن، يرجى الانتظار ليقوم بالبث.
+        </div>
     </div>
+
+    <video id="videoPlayer" playsinline></video>
 </div>
 
 <script>
     const video = document.getElementById('videoPlayer');
-    const statusBadge = document.getElementById('status');
-    const myIdDisplay = document.getElementById('myIdDisplay');
+    const statusBadge = document.getElementById('usersBadge');
+    const countDisplay = document.getElementById('countDisplay');
     
-    // إنشاء اتصال Peer مجاني وعشوائي
-    const peer = new Peer();
+    let peer = null;
     let conn = null;
+    let myRole = 'ADMIN';
     let isSyncing = false;
 
-    // عند فتح الغرفة وتوليد المعرف الخاص بك
-    peer.on('open', (id) => {
-        myIdDisplay.innerHTML = `معرف غرفتك الحالي: <b style="color:#e50914; user-select:all;">${id}</b> (اضغط مطولاً للنسخ وأرسله لها)`;
-        statusBadge.innerText = "جاهز للاتصال المباشر 🔗";
-        statusBadge.style.color = "#4caf50";
-    });
-
-    // استقبال الاتصال من الطرف الآخر (حبيبتك)
-    peer.on('connection', (connection) => {
-        conn = connection;
-        setupConnection();
-    });
-
-    // دالة للاتصال بغرفة الطرف الآخر
-    function connectToPeer() {
-        const peerId = document.getElementById('peerIdInput').value;
-        if (peerId) {
-            statusBadge.innerText = "جاري الاتصال... ⏳";
-            conn = peer.connect(peerId);
-            setupConnection();
-        }
+    function setRole(role) {
+        myRole = role;
+        document.getElementById('adminBtn').className = role === 'ADMIN' ? 'active-role' : 'btn-sec';
+        document.getElementById('viewerBtn').className = role === 'VIEWER' ? 'active-role' : 'btn-sec';
+        document.getElementById('adminAction').style.display = role === 'ADMIN' ? 'block' : 'none';
+        document.getElementById('viewerAction').style.display = role === 'VIEWER' ? 'block' : 'none';
     }
 
-    // إعداد قنوات استقبال وإرسال الأحداث اللحظية
-    function setupConnection() {
-        statusBadge.innerText = "متصلون الآن! مشاهدة ممتعة ❤️";
-        statusBadge.style.color = "#4caf50";
+    // مصطفى ينشئ غرفة برقم قصير
+    function createNewRoom() {
+        const shortId = Math.floor(1000 + Math.random() * 9000).toString(); // توليد 4 أرقام
+        
+        peer = new Peer(shortId); // حجز الرقم القصير داخل سيرفر PeerJS
+        
+        peer.on('open', (id) => {
+            document.getElementById('setupCard').style.display = 'none';
+            document.getElementById('broadcastCard').style.display = 'block';
+            document.getElementById('roomCodeDisplay').innerText = id;
+            statusBadge.style.display = 'inline-block';
+            countDisplay.innerText = "1"; // مصطفى وحده حالياً
+            video.style.display = 'block';
+            video.controls = true;
+        });
 
-        conn.on('data', (data) => {
-            isSyncing = true;
-            if (data.type === 'PLAY') {
-                video.currentTime = data.time;
-                video.play();
-            } else if (data.type === 'PAUSE') {
-                video.pause();
-            } else if (data.type === 'SEEK') {
-                video.currentTime = data.time;
-            } else if (data.type === 'LOAD') {
-                video.src = data.url;
-                video.load();
+        // استقبال اتصال لجين
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupConnection();
+        });
+
+        peer.on('error', (err) => {
+            if(err.type === 'unavailable-id') {
+                createNewRoom(); // إذا كان الرقم محجوزاً، يولد رقماً آخر تلقائياً
+            } else {
+                alert("حدث خطأ بالاتصال: " + err.type);
             }
-            setTimeout(() => { isSyncing = false; }, 200);
         });
     }
 
-    // إرسال الأحداث عند التحكم بالفيديو من قبلك
+    // لجين تدخل رقم الغرفة وتتصل
+    function joinExistingRoom() {
+        const roomCode = document.getElementById('roomCodeInput').value;
+        if (!roomCode) return alert("الرجاء إدخال رقم الغرفة أولاً!");
+
+        peer = new Peer(); // إنشاء اتصال للمشاهد عشوائي
+        
+        peer.on('open', () => {
+            conn = peer.connect(roomCode); // الاتصال برقم غرفة مصطفى
+            setupConnection();
+            
+            document.getElementById('setupCard').style.display = 'none';
+            document.getElementById('broadcastCard').style.display = 'block';
+            document.getElementById('roomCodeDisplay').innerText = roomCode;
+            document.getElementById('adminInputs').style.display = 'none';
+            document.getElementById('viewerInputs').style.display = 'block';
+            statusBadge.style.display = 'inline-block';
+            video.style.display = 'block';
+            video.controls = false; // قفل أزرار التحكم عند لجين
+        });
+    }
+
+    function setupConnection() {
+        // تحديث العداد إلى 2 فور نجاح الاتصال المباشر بينكما
+        countDisplay.innerText = "2"; 
+        countDisplay.style.background = "#2e7d32"; 
+
+        conn.on('data', (data) => {
+            if (myRole === 'VIEWER') {
+                isSyncing = true;
+                if (data.type === 'PLAY') { video.currentTime = data.time; video.play(); }
+                else if (data.type === 'PAUSE') { video.pause(); }
+                else if (data.type === 'SEEK') { video.currentTime = data.time; }
+                else if (data.type === 'LOAD') { video.src = data.url; video.load(); }
+                setTimeout(() => { isSyncing = false; }, 200);
+            }
+        });
+    }
+
+    // إرسال الأحداث اللحظية من المتحكم (مصطفى)
     video.addEventListener('play', () => {
-        if (!isSyncing && conn) conn.send({ type: 'PLAY', time: video.currentTime });
+        if (!isSyncing && conn && myRole === 'ADMIN') conn.send({ type: 'PLAY', time: video.currentTime });
     });
-
     video.addEventListener('pause', () => {
-        if (!isSyncing && conn) conn.send({ type: 'PAUSE' });
+        if (!isSyncing && conn && myRole === 'ADMIN') conn.send({ type: 'PAUSE' });
     });
-
     video.addEventListener('seeking', () => {
-        if (!isSyncing && conn) conn.send({ type: 'SEEK', time: video.currentTime });
+        if (!isSyncing && conn && myRole === 'ADMIN') conn.send({ type: 'SEEK', time: video.currentTime });
     });
 
     function loadVideo() {
         const url = document.getElementById('videoUrl').value;
-        if (url) {
-            video.src = url;
-            video.load();
+        if (url && myRole === 'ADMIN') {
+            video.src = url; video.load();
             if (conn) conn.send({ type: 'LOAD', url: url });
         }
     }
 </script>
-
 </body>
 </html>
