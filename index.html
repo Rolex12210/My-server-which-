@@ -166,10 +166,15 @@
         });
     }
 
+    // الدالة المعدلة: ترسل للطرف الثاني إذا متصل، وتظهر عندك دائماً للفحص
     function sendChatMessage() {
         const text = chatInput.value.trim();
-        if (text && conn) {
-            conn.send({ type: 'CHAT', text: text });
+        if (text) {
+            // إذا كان اكو اتصال فعلي يرسل للطرف الثاني بالخلفية
+            if (conn && conn.open) {
+                conn.send({ type: 'CHAT', text: text });
+            }
+            // تظهر رسالتك بالشاشة فوراً في كل الأحوال
             appendMessage(text, 'me');
             chatInput.value = '';
         }
@@ -211,7 +216,7 @@
         const url = document.getElementById('videoUrl').value;
         if (url && myRole === 'ADMIN') {
             video.src = url; video.load();
-            if (conn) conn.send({ type: 'LOAD', url: url });
+            if (conn && conn.open) conn.send({ type: 'LOAD', url: url });
         }
     }
 </script>
