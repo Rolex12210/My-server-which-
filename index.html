@@ -19,8 +19,6 @@
         .users-count { background: #0277bd; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px; margin-left: 5px; }
         .role-section { margin-bottom: 15px; }
         .active-role { background: #e50914 !important; border-color: #e50914; }
-        
-        /* ستايل صندوق الدردشة السينمائي */
         .chat-card { background: #151515; border: 1px solid #222; border-radius: 12px; margin-top: 20px; display: none; text-align: right; padding: 15px; }
         .chat-box { height: 150px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; display: flex; flex-direction: column; }
         .msg { margin: 4px 0; padding: 6px 12px; border-radius: 8px; max-width: 70%; word-wrap: break-word; line-height: 1.4; }
@@ -47,24 +45,26 @@
         
         <div id="adminAction">
             <button onclick="createNewRoom()">إنشاء غرفة جديدة برقم قصير</button>
+            <p style="font-size:12px; color:#aaa;">ملاحظة: سيُعاد استخدام آخر غرفة أنشأتها إن وجدت</p>
         </div>
         
         <div id="viewerAction" style="display:none; margin-top: 15px;">
             <input type="number" id="roomCodeInput" placeholder="ادخلي رقم الغرفة المتكون من 4 أرقام...">
             <br>
             <button onclick="joinExistingRoom()">دخول الغرفة والاتصال بمصطفى</button>
+            <p id="connectionStatus" style="font-size:12px; color:#ff9800; margin-top:5px;"></p>
         </div>
     </div>
 
     <div class="card" id="broadcastCard" style="display:none;">
         <div class="room-title">رقم غرفتكم الحالي هو: <span id="roomCodeDisplay">----</span></div>
         <div id="adminInputs" style="margin-top: 15px;">
-            <input type="text" id="videoUrl" placeholder="الزق رابط الفيلم المباشر المستخرج من الحاسبة هنا...">
+            <input type="text" id="videoUrl" placeholder="الزق رابط الفيلم المباشر هنا...">
             <br>
             <button onclick="loadVideo()">بث وتحديث الفيلم للطرفين</button>
         </div>
         <div id="viewerInputs" style="display:none; color: #aaa; margin-top:10px;">
-            مرحباً نونة! مصطفى يقوم بالتحكم بالفيلم الآن، يرجى الانتظار ليقوم بالبث.
+            مرحباً نونة! مصطفى يقوم بالتحكم بالفيلم الآن، يرجى الانتظار.
         </div>
     </div>
 
@@ -93,13 +93,32 @@
     let myRole = 'ADMIN';
     let isSyncing = false;
     let heartbeatInterval = null;
+    let joinAttempts = 0;
+    const MAX_JOIN_ATTEMPTS = 3;
 
+    // الإعدادات المُحسَّنة مع خوادم STUN/TURN
     const PEER_CONFIG = {
         host: '0.peerjs.com',
         port: 443,
         path: '/',
         secure: true,
-        debug: 1
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { 
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ]
+        }
     };
 
     function setRole(role) {
@@ -110,19 +129,26 @@
         document.getElementById('viewerAction').style.display = role === 'VIEWER' ? 'block' : 'none';
     }
 
-    // بدء الحفاظ على اتصال السيرفر حيّاً (Heartbeat)
     function startHeartbeat(peerInstance) {
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         heartbeatInterval = setInterval(() => {
             if (peerInstance && !peerInstance.destroyed) {
-                peerInstance.socket.send({ type: 'HEARTBEAT' });
+                try { peerInstance.socket.send({ type: 'HEARTBEAT' }); } catch(e) {}
             }
-        }, 15000); // إشارة كل 15 ثانية لمنع الخمول
+        }, 15000);
     }
 
-    // مصطفى ينشئ الغرفة
+    // إنشاء غرفة (كمتحكم)
     function createNewRoom() {
-        const shortId = Math.floor(1000 + Math.random() * 9000).toString();
+        let shortId = localStorage.getItem('lastRoomId');
+        if (!shortId) {
+            shortId = Math.floor(1000 + Math.random() * 9000).toString();
+            localStorage.setItem('lastRoomId', shortId);
+        }
+
+        if (peer && !peer.destroyed) {
+            peer.destroy();
+        }
         peer = new Peer(shortId, PEER_CONFIG);
         
         peer.on('open', (id) => {
@@ -137,21 +163,36 @@
         });
 
         peer.on('error', (err) => {
-            if(err.type === 'unavailable-id') createNewRoom();
-            else console.error("تنبيهPeer: " + err.type);
+            if(err.type === 'unavailable-id') {
+                // إذا كان الرمز محجوزاً نولد غيره
+                localStorage.removeItem('lastRoomId');
+                createNewRoom();
+            } else {
+                console.error("خطأ Peer:", err);
+                alert("حدث خطأ في الاتصال. تأكد من اتصالك بالإنترنت وحاول مجدداً.");
+            }
         });
     }
 
-    // نونة تتصل بالاتصال الحي
-    function joinExistingRoom() {
-        const roomCode = document.getElementById('roomCodeInput').value;
+    // الانضمام كمشاهدة
+    function joinExistingRoom(retry = false) {
+        const roomCode = document.getElementById('roomCodeInput').value.trim();
         if (!roomCode) return alert("الرجاء إدخال رقم الغرفة أولاً!");
 
+        const statusEl = document.getElementById('connectionStatus');
+        if (!retry) joinAttempts = 0;
+        joinAttempts++;
+        statusEl.textContent = `محاولة الاتصال ${joinAttempts}/${MAX_JOIN_ATTEMPTS}...`;
+        statusEl.style.color = '#ff9800';
+
+        if (peer && !peer.destroyed) {
+            peer.destroy();
+        }
         peer = new Peer(PEER_CONFIG);
         
         peer.on('open', () => {
             startHeartbeat(peer);
-            conn = peer.connect(roomCode, { reliable: true });
+            conn = peer.connect(roomCode, { reliable: true, serialization: 'json' });
             
             conn.on('open', () => {
                 setupConnection();
@@ -159,11 +200,31 @@
                 document.getElementById('adminInputs').style.display = 'none';
                 document.getElementById('viewerInputs').style.display = 'block';
                 video.controls = false;
+                statusEl.textContent = 'تم الاتصال!';
+                statusEl.style.color = '#4caf50';
+                joinAttempts = 0;
+            });
+
+            conn.on('error', (err) => {
+                console.warn("فشل مؤقت:", err);
+                if (joinAttempts < MAX_JOIN_ATTEMPTS) {
+                    setTimeout(() => joinExistingRoom(true), 2000);
+                } else {
+                    statusEl.textContent = 'فشل الاتصال. تأكدي من أن مصطفى ما يزال متصلاً ومن صحة الرمز.';
+                    statusEl.style.color = '#f44336';
+                    alert("لم نتمكن من الاتصال. تأكدي من أن مصطفى فتح الغرفة للتو وأن الرمز صحيح.");
+                    joinAttempts = 0;
+                }
             });
         });
 
         peer.on('error', (err) => {
-            alert("لم نجد الغرفة! اطلبي من مصطفى تحديث الصفحة وإعطائك الرمز الجديد الحركي.");
+            if (joinAttempts < MAX_JOIN_ATTEMPTS) {
+                setTimeout(() => joinExistingRoom(true), 2000);
+            } else {
+                statusEl.textContent = 'خطأ في الشبكة. حاولي لاحقاً.';
+                statusEl.style.color = '#f44336';
+            }
         });
     }
 
@@ -180,7 +241,7 @@
     function setupConnection() {
         countDisplay.innerText = "2"; 
         countDisplay.style.background = "#2e7d32"; 
-        appendSystemMessage("تم اتصال نونة بنجاح! السهرة بدأت 🎬❤️");
+        appendSystemMessage("تم الاتصال بنجاح! السهرة بدأت 🎬❤️");
 
         conn.on('data', (data) => {
             if (data.type === 'CHAT') {
