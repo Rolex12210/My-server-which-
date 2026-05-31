@@ -11,7 +11,7 @@
         h1 { color: #e50914; font-size: 26px; margin-bottom: 5px; }
         video { width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.5); background: #000; margin-top: 15px; display: none; }
         .card { background: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333; margin-top: 15px; }
-        input { width: 80%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; margin-bottom: 12px; text-align: center; font-size: 16px; }
+        input, select { width: 80%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; margin-bottom: 12px; text-align: center; font-size: 16px; }
         button { padding: 12px 24px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin: 5px; }
         .btn-sec { background: #333; border: 1px solid #444; }
         .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 10px; }
@@ -41,6 +41,15 @@
         <div class="role-section">
             <button id="adminBtn" class="active-role" onclick="setRole('ADMIN')">أنا المتحكم (مصطفى)</button>
             <button id="viewerBtn" class="btn-sec" onclick="setRole('VIEWER')">أنا المشاهد (نونة)</button>
+        </div>
+        <div id="serverSelection" style="margin-top:15px;">
+            <label>اختر خادم الإشارات:</label>
+            <select id="signalServer" onchange="updateServer()">
+                <option value="0.peerjs.com">الخادم الرئيسي (0.peerjs.com)</option>
+                <option value="peer.ee">الخادم البديل (peer.ee)</option>
+                <option value="peerjs-server.herokuapp.com">الخادم الاحتياطي 1</option>
+                <option value="nru.herokuapp.com">الخادم الاحتياطي 2</option>
+            </select>
         </div>
         <div id="adminAction">
             <button onclick="createNewRoom()">إنشاء غرفة جديدة برقم قصير</button>
@@ -81,36 +90,56 @@
 </div>
 
 <script>
-    // ========== إعدادات PeerJS المحسّنة (الخادم الرئيسي + TURN قوي) ==========
-    const PEER_CONFIG = {
-        host: '0.peerjs.com',    // الخادم الرسمي
-        port: 443,
-        path: '/',
-        secure: true,
-        debug: 2,                // يظهر تفاصيل في الكونسول للتشخيص
-        config: {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                {
-                    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                },
-                {
-                    urls: 'turn:openrelay.metered.ca:80?transport=tcp',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                },
-                {
-                    urls: 'turn:freeturn.net:3478?transport=udp',
-                    username: 'free',
-                    credential: 'free'
-                }
-            ]
-        }
+    // ========== خوادم الإشارات ==========
+    const SIGNAL_SERVERS = {
+        '0.peerjs.com': { host: '0.peerjs.com', port: 443, path: '/', secure: true },
+        'peer.ee': { host: 'peer.ee', port: 443, path: '/', secure: true },
+        'peerjs-server.herokuapp.com': { host: 'peerjs-server.herokuapp.com', port: 443, path: '/', secure: true },
+        'nru.herokuapp.com': { host: 'nru.herokuapp.com', port: 443, path: '/', secure: true }
     };
+
+    let currentSignalHost = '0.peerjs.com';
+
+    function updateServer() {
+        currentSignalHost = document.getElementById('signalServer').value;
+    }
+
+    function getPeerConfig(roomCode) {
+        return {
+            host: SIGNAL_SERVERS[currentSignalHost].host,
+            port: SIGNAL_SERVERS[currentSignalHost].port,
+            path: SIGNAL_SERVERS[currentSignalHost].path,
+            secure: true,
+            debug: 1,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    {
+                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:80?transport=tcp',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turn:freeturn.net:3478?transport=udp',
+                        username: 'free',
+                        credential: 'free'
+                    },
+                    {
+                        urls: 'turn:freeturn.net:3478?transport=tcp',
+                        username: 'free',
+                        credential: 'free'
+                    }
+                ]
+            }
+        };
+    }
 
     const video = document.getElementById('videoPlayer');
     const statusBadge = document.getElementById('usersBadge');
@@ -130,7 +159,7 @@
     let currentRoomCode = null;
     let timerInterval = null;
     let roomExpired = false;
-    const ROOM_TIMEOUT_SEC = 300;     // 5 دقائق
+    const ROOM_TIMEOUT_SEC = 300;
     let remainingSeconds = ROOM_TIMEOUT_SEC;
 
     function setRole(role) {
@@ -141,14 +170,12 @@
         document.getElementById('viewerAction').style.display = role === 'VIEWER' ? 'block' : 'none';
     }
 
-    // ---------- مؤقت الصلاحية ----------
     function startExpiryTimer() {
         if (timerInterval) clearInterval(timerInterval);
         remainingSeconds = ROOM_TIMEOUT_SEC;
         roomExpired = false;
         timerCard.style.display = 'block';
         updateTimerDisplay();
-
         timerInterval = setInterval(() => {
             remainingSeconds--;
             updateTimerDisplay();
@@ -158,7 +185,7 @@
                 roomExpired = true;
                 timerDisplay.textContent = "انتهت الصلاحية";
                 timerCard.style.color = "#f44336";
-                appendSystemMessage("⚠️ انتهت صلاحية الغرفة، لن يتمكن أحد من الدخول. أنشئ غرفة جديدة.");
+                appendSystemMessage("⚠️ انتهت صلاحية الغرفة. أنشئ غرفة جديدة.");
             }
         }, 1000);
     }
@@ -173,7 +200,6 @@
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     }
 
-    // ---------- إنشاء غرفة (متحكم) ----------
     function createNewRoom() {
         stopExpiryTimer();
         if (peer && !peer.destroyed) peer.destroy();
@@ -181,11 +207,10 @@
         currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
         roomExpired = false;
 
-        console.log('🔵 إنشاء غرفة جديدة برقم:', currentRoomCode);
-        peer = new Peer(currentRoomCode, PEER_CONFIG);
+        peer = new Peer(currentRoomCode, getPeerConfig());
 
         peer.on('open', (id) => {
-            console.log('🟢 الغرفة مفتوحة، رقمي:', id);
+            console.log('🟢 الغرفة مفتوحة:', id);
             showCinemaLayout(id);
             video.controls = true;
             startHeartbeat(peer);
@@ -202,16 +227,15 @@
         });
 
         peer.on('error', (err) => {
-            console.error('🔴 خطأ Peer:', err);
+            console.error('🔴 خطأ:', err);
             if (err.type === 'unavailable-id') {
-                createNewRoom(); // توليد رمز آخر
+                createNewRoom();
             } else {
-                alert(`فشل الاتصال بالخادم. تأكد من أن الرابط يبدأ بـ https:// وأن الإنترنت متاح.\nالخطأ: ${err.type}`);
+                alert("فشل الاتصال بالخادم. جرب خادم إشارات آخر من القائمة أعلاه.");
             }
         });
     }
 
-    // ---------- انضمام (مشاهدة) ----------
     function joinExistingRoom() {
         const code = document.getElementById('roomCodeInput').value.trim();
         if (!code) return alert("الرجاء إدخال رقم الغرفة!");
@@ -221,7 +245,7 @@
 
         if (peer && !peer.destroyed) peer.destroy();
 
-        peer = new Peer(PEER_CONFIG);
+        peer = new Peer(getPeerConfig());
         peer.on('open', () => {
             startHeartbeat(peer);
             conn = peer.connect(code, { reliable: true });
@@ -235,15 +259,14 @@
                 video.controls = false;
             });
 
-            conn.on('error', (err) => {
-                console.error(err);
-                joinStatus.textContent = "فشل الاتصال: الغرفة غير موجودة أو انتهت صلاحيتها.";
+            conn.on('error', () => {
+                joinStatus.textContent = "الغرفة غير موجودة أو انتهت صلاحيتها.";
                 joinStatus.style.color = "#f44336";
             });
         });
 
-        peer.on('error', (err) => {
-            joinStatus.textContent = "خطأ في الشبكة، تأكدي من فتح الرابط بـ https.";
+        peer.on('error', () => {
+            joinStatus.textContent = "خطأ في الشبكة. تأكدي من الرابط https وجربي خادم إشارات آخر.";
             joinStatus.style.color = "#f44336";
         });
     }
@@ -267,7 +290,7 @@
             if (data.type === 'CHAT') {
                 appendMessage(data.text, 'partner');
             } else if (data.type === 'PING') {
-                // تجاهل
+                // نبض
             } else if (myRole === 'VIEWER') {
                 isSyncing = true;
                 if (data.type === 'PLAY') { video.currentTime = data.time; video.play(); }
@@ -297,7 +320,6 @@
         }, 8000);
     }
 
-    // ---------- دردشة ----------
     function sendChatMessage() {
         const text = chatInput.value.trim();
         if (text) {
@@ -327,7 +349,6 @@
         chatBox.appendChild(div);
     }
 
-    // ---------- مزامنة الفيديو ----------
     video.addEventListener('play', () => {
         if (!isSyncing && conn && conn.open && myRole === 'ADMIN')
             conn.send({ type: 'PLAY', time: video.currentTime });
@@ -336,7 +357,7 @@
         if (!isSyncing && conn && conn.open && myRole === 'ADMIN')
             conn.send({ type: 'PAUSE' });
     });
-    video.addEventListener('seeking', () => {
+    video.addEventListener('seeked', () => {
         if (!isSyncing && conn && conn.open && myRole === 'ADMIN')
             conn.send({ type: 'SEEK', time: video.currentTime });
     });
