@@ -101,13 +101,20 @@
         document.getElementById('viewerAction').style.display = role === 'VIEWER' ? 'block' : 'none';
     }
 
+    // مصطفى ينشئ غرفة
     function createNewRoom() {
         const shortId = Math.floor(1000 + Math.random() * 9000).toString();
         peer = new Peer(shortId);
         
         peer.on('open', (id) => {
-            showCinemaLayout(id);
+            document.getElementById('setupCard').style.display = 'none';
+            document.getElementById('broadcastCard').style.display = 'block';
+            document.getElementById('roomCodeDisplay').innerText = id;
+            statusBadge.style.display = 'inline-block';
+            countDisplay.innerText = "1";
+            video.style.display = 'block';
             video.controls = true;
+            chatCard.style.display = 'block';
         });
 
         peer.on('connection', (connection) => {
@@ -117,39 +124,44 @@
 
         peer.on('error', (err) => {
             if(err.type === 'unavailable-id') createNewRoom();
-            else alert("حدث خطأ بالاتصال: " + err.type);
+            else alert("حدث خطأ في السيرفر: " + err.type);
         });
     }
 
+    // نونة تدخل الكود وتنتظر تأكيد السيرفر
     function joinExistingRoom() {
         const roomCode = document.getElementById('roomCodeInput').value;
         if (!roomCode) return alert("الرجاء إدخال رقم الغرفة أولاً!");
 
         peer = new Peer();
+        
         peer.on('open', () => {
             conn = peer.connect(roomCode);
-            setupConnection();
-            showCinemaLayout(roomCode);
-            document.getElementById('adminInputs').style.display = 'none';
-            document.getElementById('viewerInputs').style.display = 'block';
-            video.controls = false;
+            
+            // قفل الدخول التلقائي: ننتظر نجاح الاتصال المباشر الفعلي أولاً
+            conn.on('open', () => {
+                setupConnection();
+                document.getElementById('setupCard').style.display = 'none';
+                document.getElementById('broadcastCard').style.display = 'block';
+                document.getElementById('roomCodeDisplay').innerText = roomCode;
+                document.getElementById('adminInputs').style.display = 'none';
+                document.getElementById('viewerInputs').style.display = 'block';
+                statusBadge.style.display = 'inline-block';
+                video.style.display = 'block';
+                video.controls = false;
+                chatCard.style.display = 'block';
+            });
         });
-    }
 
-    function showCinemaLayout(roomCode) {
-        document.getElementById('setupCard').style.display = 'none';
-        document.getElementById('broadcastCard').style.display = 'block';
-        document.getElementById('roomCodeDisplay').innerText = roomCode;
-        statusBadge.style.display = 'inline-block';
-        countDisplay.innerText = "1";
-        video.style.display = 'block';
-        chatCard.style.display = 'block';
+        peer.on('error', (err) => {
+            alert("فشل الاتصال! تأكدي من رقم الغرفة أو أن مصطفى متصل: " + err.type);
+        });
     }
 
     function setupConnection() {
         countDisplay.innerText = "2"; 
         countDisplay.style.background = "#2e7d32"; 
-        appendSystemMessage("تم اتصال نونة بنجاح! السهرة بدأت 🎬❤️");
+        appendSystemMessage("تم الاتصال المباشر بنجاح! السهرة بدأت 🎬❤️");
 
         conn.on('data', (data) => {
             if (data.type === 'CHAT') {
@@ -164,17 +176,21 @@
                 setTimeout(() => { isSyncing = false; }, 200);
             }
         });
+
+        // إشعار في حال انقطع الاتصال
+        conn.on('close', () => {
+            countDisplay.innerText = "1";
+            countDisplay.style.background = "#333";
+            appendSystemMessage("انقطع اتصال الطرف الآخر 😢");
+        });
     }
 
-    // الدالة المعدلة: ترسل للطرف الثاني إذا متصل، وتظهر عندك دائماً للفحص
     function sendChatMessage() {
         const text = chatInput.value.trim();
         if (text) {
-            // إذا كان اكو اتصال فعلي يرسل للطرف الثاني بالخلفية
             if (conn && conn.open) {
                 conn.send({ type: 'CHAT', text: text });
             }
-            // تظهر رسالتك بالشاشة فوراً في كل الأحوال
             appendMessage(text, 'me');
             chatInput.value = '';
         }
@@ -203,13 +219,13 @@
     }
 
     video.addEventListener('play', () => {
-        if (!isSyncing && conn && myRole === 'ADMIN') conn.send({ type: 'PLAY', time: video.currentTime });
+        if (!isSyncing && conn && conn.open && myRole === 'ADMIN') conn.send({ type: 'PLAY', time: video.currentTime });
     });
     video.addEventListener('pause', () => {
-        if (!isSyncing && conn && myRole === 'ADMIN') conn.send({ type: 'PAUSE' });
+        if (!isSyncing && conn && conn.open && myRole === 'ADMIN') conn.send({ type: 'PAUSE' });
     });
     video.addEventListener('seeking', () => {
-        if (!isSyncing && conn && myRole === 'ADMIN') conn.send({ type: 'SEEK', time: video.currentTime });
+        if (!isSyncing && conn && conn.open && myRole === 'ADMIN') conn.send({ type: 'SEEK', time: video.currentTime });
     });
 
     function loadVideo() {
