@@ -19,6 +19,16 @@
         .users-count { background: #0277bd; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px; margin-left: 5px; }
         .role-section { margin-bottom: 15px; }
         .active-role { background: #e50914 !important; border-color: #e50914; }
+        
+        /* ستايل صندوق الدردشة السينمائي */
+        .chat-card { background: #151515; border: 1px solid #222; border-radius: 12px; margin-top: 20px; display: none; text-align: right; padding: 15px; }
+        .chat-box { height: 150px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; display: flex; flex-direction: column; }
+        .msg { margin: 4px 0; padding: 6px 12px; border-radius: 8px; max-width: 70%; word-wrap: break-word; line-height: 1.4; }
+        .msg.me { background: #e50914; color: white; align-self: flex-start; border-bottom-right-radius: 0; }
+        .msg.partner { background: #333; color: white; align-self: flex-end; border-bottom-left-radius: 0; }
+        .chat-input-row { display: flex; gap: 10px; }
+        .chat-input-row input { margin-bottom: 0; flex-grow: 1; text-align: right; }
+        .chat-input-row button { margin: 0; padding: 10px 20px; }
     </style>
 </head>
 <body>
@@ -32,7 +42,7 @@
     <div class="card" id="setupCard">
         <div class="role-section">
             <button id="adminBtn" class="active-role" onclick="setRole('ADMIN')">أنا المتحكم (مصطفى)</button>
-            <button id="viewerBtn" class="btn-sec" onclick="setRole('VIEWER')">أنا المشاهد (نون)</button>
+            <button id="viewerBtn" class="btn-sec" onclick="setRole('VIEWER')">أنا المشاهد (نونة)</button>
         </div>
         
         <div id="adminAction">
@@ -54,17 +64,29 @@
             <button onclick="loadVideo()">بث وتحديث الفيلم للطرفين</button>
         </div>
         <div id="viewerInputs" style="display:none; color: #aaa; margin-top:10px;">
-            مرحباً نون! مصطفى يقوم بالتحكم بالفيلم الآن، يرجى الانتظار ليقوم بالبث.
+            مرحباً نونة! مصطفى يقوم بالتحكم بالفيلم الآن، يرجى الانتظار ليقوم بالبث.
         </div>
     </div>
 
     <video id="videoPlayer" playsinline></video>
+
+    <div class="chat-card" id="chatCard">
+        <div style="font-weight: bold; margin-bottom: 8px; color: #aaa; font-size: 14px;">دردشة الغرفة السريعة 💬</div>
+        <div class="chat-box" id="chatBox"></div>
+        <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="اكتب رسالة هنا..." onkeypress="handleChatKey(event)">
+            <button onclick="sendChatMessage()">إرسال</button>
+        </div>
+    </div>
 </div>
 
 <script>
     const video = document.getElementById('videoPlayer');
     const statusBadge = document.getElementById('usersBadge');
     const countDisplay = document.getElementById('countDisplay');
+    const chatCard = document.getElementById('chatCard');
+    const chatBox = document.getElementById('chatBox');
+    const chatInput = document.getElementById('chatInput');
     
     let peer = null;
     let conn = null;
@@ -79,66 +101,61 @@
         document.getElementById('viewerAction').style.display = role === 'VIEWER' ? 'block' : 'none';
     }
 
-    // مصطفى ينشئ غرفة برقم قصير
     function createNewRoom() {
-        const shortId = Math.floor(1000 + Math.random() * 9000).toString(); // توليد 4 أرقام
-        
-        peer = new Peer(shortId); // حجز الرقم القصير داخل سيرفر PeerJS
+        const shortId = Math.floor(1000 + Math.random() * 9000).toString();
+        peer = new Peer(shortId);
         
         peer.on('open', (id) => {
-            document.getElementById('setupCard').style.display = 'none';
-            document.getElementById('broadcastCard').style.display = 'block';
-            document.getElementById('roomCodeDisplay').innerText = id;
-            statusBadge.style.display = 'inline-block';
-            countDisplay.innerText = "1"; // مصطفى وحده حالياً
-            video.style.display = 'block';
+            showCinemaLayout(id);
             video.controls = true;
         });
 
-        // استقبال اتصال لجين
         peer.on('connection', (connection) => {
             conn = connection;
             setupConnection();
         });
 
         peer.on('error', (err) => {
-            if(err.type === 'unavailable-id') {
-                createNewRoom(); // إذا كان الرقم محجوزاً، يولد رقماً آخر تلقائياً
-            } else {
-                alert("حدث خطأ بالاتصال: " + err.type);
-            }
+            if(err.type === 'unavailable-id') createNewRoom();
+            else alert("حدث خطأ بالاتصال: " + err.type);
         });
     }
 
-    // لجين تدخل رقم الغرفة وتتصل
     function joinExistingRoom() {
         const roomCode = document.getElementById('roomCodeInput').value;
         if (!roomCode) return alert("الرجاء إدخال رقم الغرفة أولاً!");
 
-        peer = new Peer(); // إنشاء اتصال للمشاهد عشوائي
-        
+        peer = new Peer();
         peer.on('open', () => {
-            conn = peer.connect(roomCode); // الاتصال برقم غرفة مصطفى
+            conn = peer.connect(roomCode);
             setupConnection();
-            
-            document.getElementById('setupCard').style.display = 'none';
-            document.getElementById('broadcastCard').style.display = 'block';
-            document.getElementById('roomCodeDisplay').innerText = roomCode;
+            showCinemaLayout(roomCode);
             document.getElementById('adminInputs').style.display = 'none';
             document.getElementById('viewerInputs').style.display = 'block';
-            statusBadge.style.display = 'inline-block';
-            video.style.display = 'block';
-            video.controls = false; // قفل أزرار التحكم عند لجين
+            video.controls = false;
         });
     }
 
+    function showCinemaLayout(roomCode) {
+        document.getElementById('setupCard').style.display = 'none';
+        document.getElementById('broadcastCard').style.display = 'block';
+        document.getElementById('roomCodeDisplay').innerText = roomCode;
+        statusBadge.style.display = 'inline-block';
+        countDisplay.innerText = "1";
+        video.style.display = 'block';
+        chatCard.style.display = 'block';
+    }
+
     function setupConnection() {
-        // تحديث العداد إلى 2 فور نجاح الاتصال المباشر بينكما
         countDisplay.innerText = "2"; 
         countDisplay.style.background = "#2e7d32"; 
+        appendSystemMessage("تم اتصال نونة بنجاح! السهرة بدأت 🎬❤️");
 
         conn.on('data', (data) => {
-            if (myRole === 'VIEWER') {
+            if (data.type === 'CHAT') {
+                appendMessage(data.text, 'partner');
+            } 
+            else if (myRole === 'VIEWER') {
                 isSyncing = true;
                 if (data.type === 'PLAY') { video.currentTime = data.time; video.play(); }
                 else if (data.type === 'PAUSE') { video.pause(); }
@@ -149,7 +166,37 @@
         });
     }
 
-    // إرسال الأحداث اللحظية من المتحكم (مصطفى)
+    function sendChatMessage() {
+        const text = chatInput.value.trim();
+        if (text && conn) {
+            conn.send({ type: 'CHAT', text: text });
+            appendMessage(text, 'me');
+            chatInput.value = '';
+        }
+    }
+
+    function handleChatKey(e) {
+        if (e.key === 'Enter') sendChatMessage();
+    }
+
+    function appendMessage(text, sender) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `msg ${sender}`;
+        msgDiv.innerText = text;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendSystemMessage(text) {
+        const sysDiv = document.createElement('div');
+        sysDiv.style.color = "#4caf50";
+        sysDiv.style.fontSize = "12px";
+        sysDiv.style.textAlign = "center";
+        sysDiv.style.margin = "5px 0";
+        sysDiv.innerText = text;
+        chatBox.appendChild(sysDiv);
+    }
+
     video.addEventListener('play', () => {
         if (!isSyncing && conn && myRole === 'ADMIN') conn.send({ type: 'PLAY', time: video.currentTime });
     });
