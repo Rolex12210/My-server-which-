@@ -30,12 +30,13 @@
         .chat-input-row button { margin: 0; padding: 10px 20px; }
         .status-card { background: #222; padding: 10px; border-radius: 8px; color: #4caf50; font-size: 16px; margin: 10px 0; font-weight: bold; }
         
-        /* تنسيق الترجمة لتظهر بشكل احترافي فوق الفيديو */
+        /* تحسينات شكل ومكان الترجمة لتظهر بوضوح بالمنتصف */
         video::cue {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             color: #fff;
             font-size: 18px;
             font-family: Arial, sans-serif;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -70,7 +71,7 @@
         <div id="adminInputs" style="margin-top: 15px;">
             <input type="text" id="videoUrl" placeholder="🔗 ألصق رابط الفيلم (mp4) هنا...">
             <br>
-            <input type="text" id="subtitleUrl" placeholder="✍️ ألصق رابط الترجمة (vtt) المستخرج هنا (اختياري)...">
+            <input type="text" id="subtitleUrl" placeholder="✍️ ألصق رابط الترجمة (webvtt) هنا...">
             <br>
             <button onclick="loadVideo()">▶️ بث الفيلم والترجمة للطرفين</button>
         </div>
@@ -79,8 +80,7 @@
         </div>
     </div>
 
-    <!-- مشغل الفيديو مع دعم مسار الترجمة المباشر -->
-    <video id="videoPlayer" playsinline controls>
+    <video id="videoPlayer" playsinline controls crossorigin="anonymous" allowfullscreen webkitallowfullscreen mozallowfullscreen>
         <track id="videoTrack" kind="subtitles" srclang="ar" label="العربية" default>
     </video>
 
@@ -226,7 +226,10 @@
             showCinemaLayout(code);
             document.getElementById('adminInputs').style.display = 'none';
             document.getElementById('viewerInputs').style.display = 'block';
-            video.controls = false; // التحكم بالكامل لمصطفى لمنع التضارب
+            
+            // تفعيل عناصر التحكم الكاملة لنونة لتستطيع الضغط على زر تكبير الشاشة والتحكم بالصوت
+            video.controls = true; 
+            
             joinStatus.textContent = '✅ متصلة بمصطفى';
             joinStatus.style.color = '#4caf50';
         });
@@ -304,7 +307,6 @@
     // تحديث توقيت السيرفر بشكل دوري طالما الفيديو يشتغل لضمان عدم حدوث فروقات
     video.addEventListener('timeupdate', () => {
         if (!isSyncing && myRole === 'ADMIN' && currentRoomCode && !video.paused) {
-            // نحدث الوقت كل 3 ثوانٍ تقريباً حتى لا نضغط على الـ Database الطلبات
             if (Math.floor(video.currentTime) % 3 === 0) {
                 database.ref('rooms/' + currentRoomCode).update({ currentTime: video.currentTime });
             }
@@ -315,7 +317,6 @@
         if (myRole === 'VIEWER' && currentRoomCode) {
             database.ref('rooms/' + currentRoomCode + '/viewerPresent').set(false);
         } else if (myRole === 'ADMIN' && currentRoomCode) {
-            // إذا خرج مصطفى يحذف الغرفة للتنظيف
             database.ref('rooms/' + currentRoomCode).remove();
         }
     });
