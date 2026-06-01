@@ -2,44 +2,62 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <!-- viewport يسمح بالتكبير اليدوي واستخدام وضع سطح المكتب -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>سينما الحب 🎬 - دعم كامل للجوال (وضع سطح المكتب)</title>
+    <title>سينما الحب 🎬 - دعم كامل لوضع سطح المكتب</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: #0a0a0a; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 12px; min-height: 100vh; }
-        .container { max-width: 1200px; margin: auto; }
-        h1 { color: #e50914; text-align: center; font-size: 1.8rem; margin-bottom: 20px; letter-spacing: -0.5px; }
-        /* كروت مرنة */
-        .card { background: #1e1e2a; border-radius: 24px; padding: 18px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-        input, button { padding: 12px 18px; border-radius: 40px; border: none; margin: 5px; font-size: 16px; }
+        body { background: #0a0a0a; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 12px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: auto; }
+        h1 { color: #e50914; text-align: center; font-size: 2rem; margin-bottom: 20px; }
+        .card { background: #1e1e2a; border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        input, button { padding: 14px 20px; border-radius: 40px; border: none; margin: 5px; font-size: 16px; }
         input { background: #2a2a2a; color: white; width: calc(100% - 30px); }
         button { background: #e50914; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
         button:active { transform: scale(0.97); }
         .flex { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-        /* حاوية الفيديو - استجابة تامة */
-        .video-container { position: relative; width: 100%; background: black; border-radius: 20px; overflow: hidden; margin-bottom: 12px; }
-        .video-container iframe, .video-container video { width: 100%; height: auto; min-height: 240px; max-height: 70vh; display: block; margin: 0 auto; border: none; background: black; }
-        /* التحكم في الأبعاد للجوال */
-        @media (max-width: 768px) {
-            .video-container iframe, .video-container video { height: auto; min-height: 220px; }
+        /* حاوية الفيديو - تتكيف مع عرض سطح المكتب */
+        .video-container { position: relative; width: 100%; background: black; border-radius: 20px; overflow: hidden; margin-bottom: 12px; text-align: center; }
+        .video-container iframe, .video-container video { 
+            width: 100%; 
+            height: auto; 
+            min-height: 300px;
+            max-height: 80vh;
+            display: block; 
+            margin: 0 auto; 
+            border: none; 
+            background: black;
         }
-        .status { background: #222; padding: 8px 16px; border-radius: 30px; font-size: 13px; display: inline-block; margin: 10px 0; }
-        .chat-box { height: 200px; overflow-y: auto; background: #111; border-radius: 20px; padding: 12px; margin: 15px 0; display: flex; flex-direction: column; gap: 6px; }
-        .msg { max-width: 80%; padding: 8px 15px; border-radius: 20px; font-size: 14px; word-break: break-word; }
+        /* عند وضع سطح المكتب (عرض الشاشة أكبر من 768 بكسل أو وضع سطح المكتب المفوّض) */
+        @media (min-width: 768px) {
+            .video-container iframe, .video-container video {
+                min-height: 500px;
+                max-height: 85vh;
+            }
+            button, input { font-size: 18px; padding: 15px 24px; }
+            .msg { font-size: 16px; }
+        }
+        /* دعم وضع سطح المكتب عبر الـ media query الخاصة بـ display-mode */
+        @media (display-mode: fullscreen) {
+            .video-container iframe, .video-container video {
+                min-height: 100vh;
+            }
+        }
+        .status { background: #222; padding: 8px 16px; border-radius: 30px; font-size: 14px; display: inline-block; margin: 10px 0; }
+        .chat-box { height: 220px; overflow-y: auto; background: #111; border-radius: 20px; padding: 12px; margin: 15px 0; display: flex; flex-direction: column; gap: 8px; }
+        .msg { max-width: 80%; padding: 10px 18px; border-radius: 20px; font-size: 15px; word-break: break-word; }
         .msg.me { background: #e50914; align-self: flex-start; border-bottom-left-radius: 5px; }
         .msg.partner { background: #333; align-self: flex-end; border-bottom-right-radius: 5px; }
         .chat-input { display: flex; gap: 10px; align-items: center; }
         .chat-input input { flex: 1; margin: 0; }
         .badge { background: #333; padding: 5px 12px; border-radius: 30px; font-size: 13px; display: inline-block; margin: 5px; }
-        .info-text { font-size: 12px; color: #aaa; text-align: center; margin-top: 8px; }
-        /* تحسين شريط التمرير */
-        ::-webkit-scrollbar { width: 5px; }
+        .info-text { font-size: 14px; color: #aaa; text-align: center; margin-top: 8px; }
+        .fullscreen-tip { background: #e5091422; border: 1px solid #e50914; border-radius: 40px; padding: 10px 15px; font-size: 14px; text-align: center; margin-top: 10px; }
+        ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1e1e2a; }
-        ::-webkit-scrollbar-thumb { background: #e50914; border-radius: 5px; }
-        /* توجيه المستخدم لوضع ملء الشاشة */
-        .fullscreen-tip { background: #e5091422; border: 1px solid #e50914; border-radius: 40px; padding: 8px 12px; font-size: 12px; text-align: center; margin-top: 8px; }
+        ::-webkit-scrollbar-thumb { background: #e50914; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -68,9 +86,9 @@
             <iframe id="driveFrame" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
             <video id="normalVideo" controls playsinline></video>
         </div>
-        <div class="flex"><button id="fullscreenBtn" onclick="goFullscreen()">📺 ملء الشاشة (يفضل للمشاهدة)</button></div>
+        <div class="flex"><button id="fullscreenBtn" onclick="goFullscreen()">📺 ملء الشاشة (تجربة سطح المكتب)</button></div>
         <div id="videoStatus" class="status">⚡ جاهز</div>
-        <div class="fullscreen-tip">💡 نصيحة: اضغط "ملء الشاشة" للحصول على أزرار تحكم كبيرة ومشاهد ممتعة على الجوال.</div>
+        <div class="fullscreen-tip">💡 للاستمتاع بأزرار تحكم كبيرة: اضغط زر "ملء الشاشة" أو فعّل وضع سطح المكتب من المتصفح.</div>
     </div>
 
     <div id="adminControls" class="card" style="display:none;">
@@ -142,7 +160,6 @@
             }
             document.getElementById('videoStatus').innerHTML = '🎥 فيديو عادي';
         }
-        // تأكيد أن زر ملء الشاشة يعمل مع العنصر الظاهر
     }
 
     function goFullscreen() {
@@ -153,8 +170,8 @@
             else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
             else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
             else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-            else if (elem.webkitEnterFullscreen) elem.webkitEnterFullscreen(); // خاص iOS للفيديو
-            else alert('المتصفح لا يدعم ملء الشاشة، لكن يمكنك تكبير الشاشة يدوياً');
+            else if (elem.webkitEnterFullscreen) elem.webkitEnterFullscreen();
+            else alert('المتصفح لا يدعم ملء الشاشة، لكن يمكنك تفعيل وضع سطح المكتب يدوياً.');
         } catch(e) { alert('حدث خطأ: '+e.message); }
     }
 
@@ -249,6 +266,11 @@
         document.getElementById('viewerBtn').style.background = role === 'viewer' ? '#e50914' : '#333';
         document.getElementById('adminCreate').style.display = role === 'admin' ? 'block' : 'none';
         document.getElementById('viewerJoin').style.display = role === 'viewer' ? 'block' : 'none';
+    }
+
+    // كشف وضع سطح المكتب (اختياري) وتطبيق class إضافي
+    if (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(min-width: 768px)').matches) {
+        document.body.classList.add('desktop-mode');
     }
 
     window.setRole = setRole; window.createRoom = createRoom; window.joinRoom = joinRoom;
