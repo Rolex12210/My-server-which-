@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>سينما الحب 🍿❤️</title>
+    <!-- فايربيس الموثوق والسرير للمزامنة -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- مكتبة HLS.js السحرية لتشغيل روابط m3u8 وسيرفرات البث العالمية -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         body { background-color: #111; color: #fff; font-family: Arial, sans-serif; text-align: center; padding: 20px; margin: 0; }
         .container { max-width: 800px; margin: 0 auto; }
@@ -30,7 +33,8 @@
         .chat-input-row button { margin: 0; padding: 10px 20px; }
         .status-card { background: #222; padding: 10px; border-radius: 8px; color: #4caf50; font-size: 16px; margin: 10px 0; font-weight: bold; }
         
-        /* تحسينات شكل ومكان الترجمة لتظهر بوضوح بالمنتصف */
+        .fullscreen-btn { display: none; background: #0288d1; color: white; padding: 14px 28px; font-size: 16px; border-radius: 8px; font-weight: bold; margin-top: 15px; width: 85%; border: none; cursor: pointer; }
+        
         video::cue {
             background: rgba(0, 0, 0, 0.75);
             color: #fff;
@@ -66,12 +70,12 @@
     <div class="card" id="broadcastCard" style="display:none;">
         <div class="room-title">🎥 رقم الغرفة: <span id="roomCodeDisplay">----</span></div>
         <div id="statusCard" class="status-card">
-            🟢 الغرفة مستقرة وجاهزة للسهرة بالكامل
+            🟢 الغرفة مستقرة وجاهزة لمشاهدة أي صيغة (MP4 / M3U8)
         </div>
         <div id="adminInputs" style="margin-top: 15px;">
-            <input type="text" id="videoUrl" placeholder="🔗 ألصق رابط الفيلم (mp4) هنا...">
+            <input type="text" id="videoUrl" placeholder="🔗 ألصق رابط الفيلم (mp4 أو m3u8) هنا...">
             <br>
-            <input type="text" id="subtitleUrl" placeholder="✍️ ألصق رابط الترجمة (webvtt) هنا...">
+            <input type="text" id="subtitleUrl" placeholder="✍️ ألصق رابط الترجمة (webvtt) هنا (اختياري)...">
             <br>
             <button onclick="loadVideo()">▶️ بث الفيلم والترجمة للطرفين</button>
         </div>
@@ -80,9 +84,11 @@
         </div>
     </div>
 
-    <video id="videoPlayer" playsinline controls crossorigin="anonymous" allowfullscreen webkitallowfullscreen mozallowfullscreen>
+    <video id="videoPlayer" playsinline crossorigin="anonymous">
         <track id="videoTrack" kind="subtitles" srclang="ar" label="العربية" default>
     </video>
+
+    <button id="customFullscreenBtn" class="fullscreen-btn" onclick="goFullscreen()">📺 وضع ملء الشاشة الكاملة</button>
 
     <div class="chat-card" id="chatCard">
         <div style="font-weight: bold; margin-bottom: 8px; color: #aaa; font-size: 14px;">💬 دردشة السينما</div>
@@ -95,7 +101,6 @@
 </div>
 
 <script>
-    // ========== إعدادات Firebase مالتك ==========
     const firebaseConfig = {
         apiKey: "AIzaSyCu62w7jzvxYvxPFdd65FbACIYohoXQ3Yk",
         authDomain: "cenama-9093f.firebaseapp.com",
@@ -118,10 +123,12 @@
     const chatInput = document.getElementById('chatInput');
     const joinStatus = document.getElementById('joinStatus');
     const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+    const customFullscreenBtn = document.getElementById('customFullscreenBtn');
 
     let myRole = 'ADMIN';
     let currentRoomCode = null;
     let isSyncing = false;
+    let hls = null;
 
     function setRole(role) {
         myRole = role;
@@ -139,6 +146,46 @@
         countDisplay.textContent = '1';
         video.style.display = 'block';
         chatCard.style.display = 'block';
+        
+        if (myRole === 'VIEWER') {
+            video.controls = false;
+            customFullscreenBtn.style.display = 'inline-block';
+        } else {
+            video.controls = true;
+            customFullscreenBtn.style.display = 'none';
+        }
+    }
+
+    // دالة ذكية لتشغيل الميديا سواء كانت مقطع MP4 عادي أو ستريم الحزم M3U8
+    function attachMediaStream(url) {
+        if (!url) return;
+        
+        // تنظيف أي كاش لمشغل الـ HLS القديم لمنع التداخل
+        if (hls) {
+            hls.destroy();
+            hls = null;
+        }
+
+        if (url.includes('.m3u8')) {
+            if (Hls.isSupported()) {
+                hls = new Hls({ maxMaxBufferLength: 30 }); // تضبيط البافر حتى يشتغل بسرعة داخل العراق
+                hls.loadSource(url);
+                hls.attachMedia(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // دعم تلقائي لمتصفحات آبل (سفاري) التي تدعم m3u8 أصلاً
+                video.src = url;
+            }
+        } else {
+            // روابط الـ mp4 العادية تشتغل طبيعي هنا
+            video.src = url;
+        }
+    }
+
+    function goFullscreen() {
+        if (video.requestFullscreen) video.requestFullscreen();
+        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+        else if (video.mozRequestFullScreen) video.mozRequestFullScreen();
+        else if (video.msRequestFullscreen) video.msRequestFullscreen();
     }
 
     // ========== إنشاء غرفة (مصطفى) ==========
@@ -164,7 +211,6 @@
         });
 
         showCinemaLayout(currentRoomCode);
-        video.controls = true;
     }
 
     // ========== انضمام (نونة) ==========
@@ -182,7 +228,7 @@
             currentRoomCode = code;
             database.ref('rooms/' + code + '/viewerPresent').set(true);
 
-            // مزامنة دقيقة للحالة والوقت
+            // مزامنة دقيقة للحالة والوقت للطرفين
             database.ref('rooms/' + code + '/state').on('value', s => {
                 if (isSyncing || myRole === 'ADMIN') return;
                 const state = s.val();
@@ -202,15 +248,13 @@
                 });
             });
 
-            // مراقبة رابط الفيديو وتحديثه فوراً لنونة
             database.ref('rooms/' + code + '/videoUrl').on('value', s => {
                 if (s.val() && video.src !== s.val()) {
-                    video.src = s.val();
+                    attachMediaStream(s.val());
                     video.load();
                 }
             });
 
-            // مراقبة رابط الترجمة وتحديثه فوراً لنونة
             database.ref('rooms/' + code + '/subtitleUrl').on('value', s => {
                 if (s.val()) {
                     videoTrack.src = s.val();
@@ -226,10 +270,6 @@
             showCinemaLayout(code);
             document.getElementById('adminInputs').style.display = 'none';
             document.getElementById('viewerInputs').style.display = 'block';
-            
-            // تفعيل عناصر التحكم الكاملة لنونة لتستطيع الضغط على زر تكبير الشاشة والتحكم بالصوت
-            video.controls = true; 
-            
             joinStatus.textContent = '✅ متصلة بمصطفى';
             joinStatus.style.color = '#4caf50';
         });
@@ -270,7 +310,7 @@
         const url = document.getElementById('videoUrl').value.trim();
         const subUrl = document.getElementById('subtitleUrl').value.trim();
         if (url && myRole === 'ADMIN' && currentRoomCode) {
-            video.src = url;
+            attachMediaStream(url);
             if (subUrl) {
                 videoTrack.src = subUrl;
                 videoTrack.track.mode = "showing";
@@ -285,7 +325,7 @@
         }
     }
 
-    // ========== مستمعات الأحداث الدقيقة للتزامن ==========
+    // ========== مستمعات الأحداث الدقيقة للتزامن (لمصطفى فقط) ==========
     video.addEventListener('play', () => {
         if (!isSyncing && myRole === 'ADMIN' && currentRoomCode) {
             database.ref('rooms/' + currentRoomCode).update({ state: 'play', currentTime: video.currentTime });
@@ -304,7 +344,6 @@
         }
     });
 
-    // تحديث توقيت السيرفر بشكل دوري طالما الفيديو يشتغل لضمان عدم حدوث فروقات
     video.addEventListener('timeupdate', () => {
         if (!isSyncing && myRole === 'ADMIN' && currentRoomCode && !video.paused) {
             if (Math.floor(video.currentTime) % 3 === 0) {
