@@ -10,10 +10,10 @@
     <style>
         /* تصفير عام وعزل صارم للأبعاد */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background-color: #111; color: #fff; font-family: Arial, sans-serif; padding: 15px; direction: rtl; }
+        body { background-color: #111; color: #fff; font-family: Arial, sans-serif; padding: 12px; direction: rtl; }
         
         /* الحاوية الرئيسية ترتب العناصر كطوابق معزولة تماماً بفواصل ثابتة */
-        .container { max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        .container { max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
         
         h1 { color: #e50914; font-size: 22px; margin: 5px 0; text-align: center; }
         
@@ -29,19 +29,20 @@
         .room-title { font-size: 18px; color: #e50914; font-weight: bold; margin-bottom: 5px; }
         .status-card { background: #222; padding: 8px; border-radius: 8px; color: #4caf50; font-size: 14px; margin: 5px 0; font-weight: bold; }
 
-        /* حاوية الفيديو: تم قفل الارتفاع لمنع تمدد أزرار قوقل درايف خارج الصندوق الأسود */
-        .video-wrapper { width: 100%; height: 280px; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4); background: #000; overflow: hidden; display: none; position: relative; }
+        /* حاوية الفيديو: تم قفل الارتفاع لمنع تمدد عناصر قوقل درايف خارج الصندوق الأسود */
+        .video-wrapper { width: 100%; height: 260px; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4); background: #000; overflow: hidden; display: none; position: relative; }
         video { width: 100%; height: 100%; display: none; background: #000; }
         
-        /* قفل أبعاد الآيفريم بشكل إجباري ومستقر يمنع تمدد الأزرار أو إزاحتها */
+        /* قفل أبعاد الآيفريم بشكل إجباري ومستقر لمنع تشوه المشغل */
         iframe { width: 100%; height: 100%; border: none; display: none; background: #000; position: absolute; top: 0; left: 0; }
 
-        /* زر تكبير الشاشة المخصص لنونة ينزل كطابق مستقل تماماً */
-        .fullscreen-btn { display: none; background: #0288d1; color: white; padding: 12px 20px; font-size: 15px; border-radius: 8px; font-weight: bold; width: 100%; border: none; cursor: pointer; text-align: center; }
+        /* زر تكبير الشاشة السحري المتاح الآن للجميع بوضوح عالي للتحكم السلس */
+        .fullscreen-btn { display: none; background: #0288d1; color: white; padding: 14px 20px; font-size: 16px; border-radius: 10px; font-weight: bold; width: 100%; border: none; cursor: pointer; text-align: center; box-shadow: 0 4px 10px rgba(2, 136, 209, 0.3); }
+        .fullscreen-btn:active { background: #01579b; }
         
         /* كارت الشات: معزول كلياً ومستحيل يتأثر بالفيديو أو يزحف فوقه */
         .chat-card { background: #151515; border: 1px solid #222; border-radius: 12px; text-align: right; padding: 12px; display: none; width: 100%; }
-        .chat-box { height: 120px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; display: flex; flex-direction: column; }
+        .chat-box { height: 110px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; display: flex; flex-direction: column; }
         .msg { margin: 4px 0; padding: 6px 12px; border-radius: 8px; max-width: 75%; }
         .msg.me { background: #e50914; color: white; align-self: flex-start; border-bottom-right-radius: 0; }
         .msg.partner { background: #333; color: white; align-self: flex-end; border-bottom-left-radius: 0; }
@@ -152,7 +153,8 @@
         document.getElementById('usersBadge').style.display = 'inline-block';
         videoWrapper.style.display = 'block';
         chatCard.style.display = 'block';
-        if (myRole === 'VIEWER') customFullscreenBtn.style.display = 'block';
+        // إظهار زر التكبير للطرفين دائماً عند بدء البث
+        customFullscreenBtn.style.display = 'block';
     }
 
     function smartPlay(url) {
@@ -198,6 +200,7 @@
         if (p.requestFullscreen) p.requestFullscreen();
         else if (p.webkitRequestFullscreen) p.webkitRequestFullscreen();
         else if (p.mozRequestFullScreen) p.mozRequestFullScreen();
+        else if (p.msRequestFullscreen) p.msRequestFullscreen();
     }
 
     function createNewRoom() {
