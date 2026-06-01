@@ -2,59 +2,67 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <!-- viewport يسمح بالتكبير اليدوي واستخدام وضع سطح المكتب -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>سينما الحب 🎬 - دعم كامل لوضع سطح المكتب</title>
+    <meta name="viewport" content="width=1024, initial-scale=1.0, user-scalable=yes">
+    <title>🎬 سينما الحب ❤️ - وضع سطح المكتب المستقر</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: #0a0a0a; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 12px; min-height: 100vh; }
-        .container { max-width: 1400px; margin: auto; }
-        h1 { color: #e50914; text-align: center; font-size: 2rem; margin-bottom: 20px; }
-        .card { background: #1e1e2a; border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        body { background: #0a0a0a; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 20px; min-height: 100vh; direction: rtl; }
+        
+        /* تثبيت عرض الحاوية بما يتناسب مع أبعاد سطح المكتب المصغر للموبايل */
+        .container { max-width: 900px; margin: auto; display: flex; flex-direction: column; gap: 15px; }
+        
+        h1 { color: #e50914; text-align: center; font-size: 2.2rem; margin-bottom: 10px; }
+        .card { background: #1e1e2a; border-radius: 24px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); text-align: center; }
+        
         input, button { padding: 14px 20px; border-radius: 40px; border: none; margin: 5px; font-size: 16px; }
-        input { background: #2a2a2a; color: white; width: calc(100% - 30px); }
-        button { background: #e50914; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        input { background: #2a2a2a; color: white; width: 80%; text-align: center; }
+        button { background: #e50914; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-block; }
         button:active { transform: scale(0.97); }
-        .flex { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-        /* حاوية الفيديو - تتكيف مع عرض سطح المكتب */
-        .video-container { position: relative; width: 100%; background: black; border-radius: 20px; overflow: hidden; margin-bottom: 12px; text-align: center; }
-        .video-container iframe, .video-container video { 
+        .btn-sec { background: #333; }
+        
+        .flex { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
+        
+        /* حاوية الفيديو - هندسة النسبة الذهبية للسينما 16:9 لمنع تمدد مشغل جوجل درايف عشوائياً */
+        .video-container { 
+            position: relative; 
             width: 100%; 
-            height: auto; 
-            min-height: 300px;
-            max-height: 80vh;
-            display: block; 
-            margin: 0 auto; 
+            padding-top: 56.25%; /* نسبة 16:9 */
+            background: black; 
+            border-radius: 20px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 25px rgba(229, 9, 20, 0.25);
+        }
+        
+        /* قفل أبعاد الآيفريم والمشغل داخل النسبة الثابتة تماماً */
+        .video-container iframe, .video-container video { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%; 
+            height: 100%; 
+            display: none; 
             border: none; 
             background: black;
         }
-        /* عند وضع سطح المكتب (عرض الشاشة أكبر من 768 بكسل أو وضع سطح المكتب المفوّض) */
-        @media (min-width: 768px) {
-            .video-container iframe, .video-container video {
-                min-height: 500px;
-                max-height: 85vh;
-            }
-            button, input { font-size: 18px; padding: 15px 24px; }
-            .msg { font-size: 16px; }
-        }
-        /* دعم وضع سطح المكتب عبر الـ media query الخاصة بـ display-mode */
-        @media (display-mode: fullscreen) {
-            .video-container iframe, .video-container video {
-                min-height: 100vh;
-            }
-        }
-        .status { background: #222; padding: 8px 16px; border-radius: 30px; font-size: 14px; display: inline-block; margin: 10px 0; }
-        .chat-box { height: 220px; overflow-y: auto; background: #111; border-radius: 20px; padding: 12px; margin: 15px 0; display: flex; flex-direction: column; gap: 8px; }
-        .msg { max-width: 80%; padding: 10px 18px; border-radius: 20px; font-size: 15px; word-break: break-word; }
-        .msg.me { background: #e50914; align-self: flex-start; border-bottom-left-radius: 5px; }
-        .msg.partner { background: #333; align-self: flex-end; border-bottom-right-radius: 5px; }
+        
+        .status { background: #222; padding: 8px 16px; border-radius: 30px; font-size: 14px; display: inline-block; margin: 5px auto; color: #4caf50; font-weight: bold; }
+        
+        /* كارت الشات منسق ومستقر سفلياً */
+        .chat-box { height: 180px; overflow-y: auto; background: #111; border-radius: 20px; padding: 12px; margin: 15px 0; display: flex; flex-direction: column; gap: 8px; text-align: right; }
+        .msg { max-width: 75%; padding: 10px 18px; border-radius: 20px; font-size: 15px; word-break: break-word; }
+        .msg.me { background: #e50914; align-self: flex-start; border-bottom-right-radius: 5px; color: white; }
+        .msg.partner { background: #333; align-self: flex-end; border-bottom-left-radius: 5px; color: white; }
+        
         .chat-input { display: flex; gap: 10px; align-items: center; }
-        .chat-input input { flex: 1; margin: 0; }
+        .chat-input input { flex: 1; margin: 0; text-align: right; }
+        .chat-input button { width: auto; margin: 0; }
+        
         .badge { background: #333; padding: 5px 12px; border-radius: 30px; font-size: 13px; display: inline-block; margin: 5px; }
         .info-text { font-size: 14px; color: #aaa; text-align: center; margin-top: 8px; }
-        .fullscreen-tip { background: #e5091422; border: 1px solid #e50914; border-radius: 40px; padding: 10px 15px; font-size: 14px; text-align: center; margin-top: 10px; }
+        .fullscreen-tip { background: #e5091411; border: 1px solid #e5091433; border-radius: 40px; padding: 10px 15px; font-size: 14px; text-align: center; color: #ccc; }
+        
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1e1e2a; }
         ::-webkit-scrollbar-thumb { background: #e50914; border-radius: 10px; }
@@ -67,38 +75,43 @@
     <div class="card" id="roleCard">
         <div class="flex">
             <button id="adminBtn" onclick="setRole('admin')">🎬 أنا المصدر (مصطفى)</button>
-            <button id="viewerBtn" onclick="setRole('viewer')">🍿 أنا المشاهد (نونة)</button>
+            <button id="viewerBtn" class="btn-sec" onclick="setRole('viewer')">🍿 أنا المشاهد (نونة)</button>
         </div>
-        <div id="adminCreate"><button onclick="createRoom()">✨ إنشاء غرفة جديدة</button></div>
-        <div id="viewerJoin" style="display:none;">
-            <input type="text" id="roomCodeInput" placeholder="🔢 رقم الغرفة">
+        <div id="adminCreate" style="margin-top: 15px;"><button onclick="createRoom()">✨ إنشاء غرفة جديدة</button></div>
+        <div id="viewerJoin" style="display:none; margin-top: 15px;">
+            <input type="number" id="roomCodeInput" placeholder="🔢 رقم الغرفة...">
+            <br>
             <button onclick="joinRoom()">💕 دخول الغرفة</button>
             <div id="joinError" class="info-text"></div>
         </div>
     </div>
 
     <div id="roomInfo" style="display:none;" class="card">
-        <div>🎥 رقم الغرفة: <strong id="roomCodeSpan"></strong> | 👥 المتصلون: <span id="userCount">1</span></div>
+        <div>🎥 رقم الغرفة: <strong id="roomCodeSpan" style="color:#e50914;"></strong> | 👥 المتصلون بالغرفة: <span id="userCount" style="font-weight:bold; color:#4caf50;">1</span></div>
     </div>
 
-    <div id="videoSection" style="display:none;">
+    <div id="videoSection" style="display:none;" class="card">
         <div class="video-container" id="videoContainer">
             <iframe id="driveFrame" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
-            <video id="normalVideo" controls playsinline></video>
+            <video id="normalVideo" controls playsinline crossorigin="anonymous">
+                <track id="videoTrack" kind="subtitles" srclang="ar" label="العربية" default>
+            </video>
         </div>
-        <div class="flex"><button id="fullscreenBtn" onclick="goFullscreen()">📺 ملء الشاشة (تجربة سطح المكتب)</button></div>
-        <div id="videoStatus" class="status">⚡ جاهز</div>
-        <div class="fullscreen-tip">💡 للاستمتاع بأزرار تحكم كبيرة: اضغط زر "ملء الشاشة" أو فعّل وضع سطح المكتب من المتصفح.</div>
+        <div class="flex" style="margin-top: 10px;">
+            <button id="fullscreenBtn" style="background:#0288d1; width:100%;" onclick="goFullscreen()">📺 تشغيل بوضع ملء الشاشة الكاملة</button>
+        </div>
+        <div id="videoStatus" class="status">🟢 النظام مستقر وجاهز</div>
+        <div class="fullscreen-tip">💡 مبروك! تم تفعيل وضع سطح المكتب تلقائياً. إذا واجهتك أي أزرار مفقودة في قوقل درايف، اضغط زر "ملء الشاشة" للتحكم المطلق والسلس.</div>
     </div>
 
     <div id="adminControls" class="card" style="display:none;">
         <input type="text" id="videoUrlInput" placeholder="🔗 رابط الفيديو (Google Drive, mp4, m3u8)">
-        <input type="text" id="subtitleUrlInput" placeholder="✍️ رابط الترجمة (WebVTT) - اختياري">
-        <div class="flex"><button onclick="publishVideo()">▶️ بث الحلقة الآن</button></div>
+        <input type="text" id="subtitleUrlInput" placeholder="✍️ رابط الترجمة (WebVTT) - اختياري للمشغل العادي">
+        <div class="flex" style="margin-top: 10px;"><button onclick="publishVideo()">▶️ بث الحلقة الآن</button></div>
         <div id="publishStatus" class="info-text"></div>
     </div>
 
-    <div id="viewerWait" class="card" style="display:none; text-align:center;">💖 في انتظار أن يقوم مصطفى ببدء البث...</div>
+    <div id="viewerWait" class="card" style="display:none; text-align:center; font-weight:bold; color:#aaa;">💖 في انتظار أن يقوم مصطفى ببدء البث...</div>
 
     <div id="chatSection" class="card" style="display:none;">
         <div class="chat-box" id="chatBox"></div>
@@ -124,7 +137,8 @@
 
     const driveFrame = document.getElementById('driveFrame');
     const normalVideo = document.getElementById('normalVideo');
-    let myRole = null, currentRoom = null, isSyncing = false;
+    const videoTrack = document.getElementById('videoTrack');
+    let myRole = 'admin', currentRoom = null, isSyncing = false, hls = null;
 
     function getDriveEmbedUrl(url) {
         let m = url.match(/\/file\/d\/([^\/]+)/);
@@ -137,28 +151,21 @@
     function displayVideo(url, subUrl = null) {
         driveFrame.style.display = 'none';
         normalVideo.style.display = 'none';
+        document.getElementById('videoContainer').style.display = 'block';
+        
         let embed = getDriveEmbedUrl(url);
         if (embed) {
             driveFrame.src = embed;
             driveFrame.style.display = 'block';
-            document.getElementById('videoStatus').innerHTML = '🎬 فيديو جوجل درايف يعمل الآن';
+            document.getElementById('videoStatus').innerHTML = '🎬 سيرفر Google Drive المباشر يعمل بوضع سطح المكتب!';
         } else {
             normalVideo.src = url;
             normalVideo.style.display = 'block';
             if (subUrl) {
-                let track = normalVideo.querySelector('track');
-                if (!track) {
-                    track = document.createElement('track');
-                    track.kind = 'subtitles';
-                    track.srclang = 'ar';
-                    track.label = 'العربية';
-                    normalVideo.appendChild(track);
-                }
-                track.src = subUrl;
-                track.default = true;
-                if (normalVideo.textTracks.length) normalVideo.textTracks[0].mode = 'showing';
+                videoTrack.src = subUrl;
+                videoTrack.track.mode = 'showing';
             }
-            document.getElementById('videoStatus').innerHTML = '🎥 فيديو عادي';
+            document.getElementById('videoStatus').innerHTML = '🎥 مشغل عادي مستقر';
         }
     }
 
@@ -168,11 +175,10 @@
         try {
             if (elem.requestFullscreen) elem.requestFullscreen();
             else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+            else if (elem.webkitEnterFullscreen) elem.webkitEnterFullscreen(); // دعم إضافي للآيفون وسفاري
             else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
             else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-            else if (elem.webkitEnterFullscreen) elem.webkitEnterFullscreen();
-            else alert('المتصفح لا يدعم ملء الشاشة، لكن يمكنك تفعيل وضع سطح المكتب يدوياً.');
-        } catch(e) { alert('حدث خطأ: '+e.message); }
+        } catch(e) { alert('تنبيه: سيتم التكبير تلقائياً عند التشغيل داخل المشغل.'); }
     }
 
     function showCinemaUI(code) {
@@ -266,11 +272,6 @@
         document.getElementById('viewerBtn').style.background = role === 'viewer' ? '#e50914' : '#333';
         document.getElementById('adminCreate').style.display = role === 'admin' ? 'block' : 'none';
         document.getElementById('viewerJoin').style.display = role === 'viewer' ? 'block' : 'none';
-    }
-
-    // كشف وضع سطح المكتب (اختياري) وتطبيق class إضافي
-    if (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(min-width: 768px)').matches) {
-        document.body.classList.add('desktop-mode');
     }
 
     window.setRole = setRole; window.createRoom = createRoom; window.joinRoom = joinRoom;
