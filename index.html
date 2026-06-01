@@ -2,22 +2,20 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سينما الحب 🍿❤️</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>سينما الحب 🍿❤️ - بث مشترك</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        /* تصفير عام وعزل صارم للأبعاد */
+        /* تصفير عام */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #111; color: #fff; font-family: Arial, sans-serif; padding: 12px; direction: rtl; }
         
-        /* الحاوية الرئيسية ترتب العناصر كطوابق معزولة تماماً بفواصل ثابتة */
         .container { max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
         
         h1 { color: #e50914; font-size: 22px; margin: 5px 0; text-align: center; }
         
-        /* تصميم الكروت المستقلة لمنع التداخل */
         .card { background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; width: 100%; text-align: center; }
         
         input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; margin-bottom: 10px; text-align: center; font-size: 14px; display: block; }
@@ -29,25 +27,71 @@
         .room-title { font-size: 18px; color: #e50914; font-weight: bold; margin-bottom: 5px; }
         .status-card { background: #222; padding: 8px; border-radius: 8px; color: #4caf50; font-size: 14px; margin: 5px 0; font-weight: bold; }
 
-        /* حاوية الفيديو: تم قفل الارتفاع لمنع تمدد عناصر قوقل درايف خارج الصندوق الأسود */
-        .video-wrapper { width: 100%; height: 260px; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4); background: #000; overflow: hidden; display: none; position: relative; }
-        video { width: 100%; height: 100%; display: none; background: #000; }
+        /* حاوية الفيديو - تم تعديلها لدعم ملء الشاشة بشكل صحيح */
+        .video-wrapper {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 16 / 9;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4);
+            background: #000;
+            overflow: hidden;
+            display: none;
+            position: relative;
+        }
+        video, iframe {
+            width: 100%;
+            height: 100%;
+            display: none;
+            background: #000;
+            object-fit: contain;
+        }
         
-        /* قفل أبعاد الآيفريم بشكل إجباري ومستقر لمنع تشوه المشغل */
-        iframe { width: 100%; height: 100%; border: none; display: none; background: #000; position: absolute; top: 0; left: 0; }
+        /* دعم ملء الشاشة للحاوية نفسها */
+        .video-wrapper:fullscreen,
+        .video-wrapper:-webkit-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: black;
+        }
+        .video-wrapper:fullscreen video,
+        .video-wrapper:fullscreen iframe,
+        .video-wrapper:-webkit-full-screen video,
+        .video-wrapper:-webkit-full-screen iframe {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
 
-        /* زر تكبير الشاشة السحري المتاح الآن للجميع بوضوح عالي للتحكم السلس */
-        .fullscreen-btn { display: none; background: #0288d1; color: white; padding: 14px 20px; font-size: 16px; border-radius: 10px; font-weight: bold; width: 100%; border: none; cursor: pointer; text-align: center; box-shadow: 0 4px 10px rgba(2, 136, 209, 0.3); }
+        /* زر ملء الشاشة */
+        .fullscreen-btn {
+            display: none;
+            background: #0288d1;
+            color: white;
+            padding: 14px 20px;
+            font-size: 16px;
+            border-radius: 10px;
+            font-weight: bold;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(2, 136, 209, 0.3);
+        }
         .fullscreen-btn:active { background: #01579b; }
         
-        /* كارت الشات: معزول كلياً ومستحيل يتأثر بالفيديو أو يزحف فوقه */
+        /* كارت الشات */
         .chat-card { background: #151515; border: 1px solid #222; border-radius: 12px; text-align: right; padding: 12px; display: none; width: 100%; }
         .chat-box { height: 110px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; display: flex; flex-direction: column; }
         .msg { margin: 4px 0; padding: 6px 12px; border-radius: 8px; max-width: 75%; }
         .msg.me { background: #e50914; color: white; align-self: flex-start; border-bottom-right-radius: 0; }
         .msg.partner { background: #333; color: white; align-self: flex-end; border-bottom-left-radius: 0; }
         
-        /* ترتيب صف إرسال الشات بشكل مرن ومنضبط داخل الكارت باستخدام الـ Flex */
         .chat-input-row { width: 100%; display: flex; gap: 8px; align-items: center; }
         .chat-input-row input { margin-bottom: 0; flex-grow: 1; text-align: right; }
         .chat-input-row button { margin: 0; padding: 12px 15px; width: auto; }
@@ -153,12 +197,15 @@
         document.getElementById('usersBadge').style.display = 'inline-block';
         videoWrapper.style.display = 'block';
         chatCard.style.display = 'block';
-        // إظهار زر التكبير للطرفين دائماً عند بدء البث
         customFullscreenBtn.style.display = 'block';
     }
 
     function smartPlay(url) {
         if (!url) return;
+        
+        // إخفاء كلا العنصرين أولاً
+        video.style.display = 'none';
+        drivePlayer.style.display = 'none';
         
         if (url.includes('drive.google.com') || url.includes('docs.google.com')) {
             let fileId = '';
@@ -169,7 +216,6 @@
             }
 
             if (fileId) {
-                video.style.display = 'none';
                 drivePlayer.style.display = 'block';
                 drivePlayer.src = `https://drive.google.com/file/d/${fileId}/preview`;
                 document.getElementById('statusCard').textContent = "🎬 سيرفر Google Drive المباشر شغال!";
@@ -177,9 +223,8 @@
             }
         }
 
-        drivePlayer.style.display = 'none';
+        // تشغيل عادي (فيديو أو m3u8)
         video.style.display = 'block';
-
         if (hls) { hls.destroy(); hls = null; }
 
         if (url.includes('.m3u8')) {
@@ -195,12 +240,30 @@
         }
     }
 
+    // الحل السحري لملء الشاشة - يستهدف الحاوية الخارجية
     function goFullscreen() {
-        const p = drivePlayer.style.display === 'block' ? drivePlayer : video;
-        if (p.requestFullscreen) p.requestFullscreen();
-        else if (p.webkitRequestFullscreen) p.webkitRequestFullscreen();
-        else if (p.mozRequestFullScreen) p.mozRequestFullScreen();
-        else if (p.msRequestFullscreen) p.msRequestFullscreen();
+        const container = document.getElementById('videoWrapper');
+        if (!container) return;
+        
+        try {
+            if (container.requestFullscreen) {
+                container.requestFullscreen();
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            } else if (container.mozRequestFullScreen) {
+                container.mozRequestFullScreen();
+            } else if (container.msRequestFullscreen) {
+                container.msRequestFullscreen();
+            } else {
+                // حل بديل: تكبير الفيديو نفسه
+                const elem = video.style.display === 'block' ? video : drivePlayer;
+                if (elem && elem.requestFullscreen) elem.requestFullscreen();
+                else alert("متصفحك لا يدعم ملء الشاشة تلقائياً، حاول استخدام زر المتصفح.");
+            }
+        } catch (err) {
+            console.warn("Fullscreen error:", err);
+            alert("حدث خطأ في ملء الشاشة، حاول مرة أخرى أو استخدم زر التكبير في المتصفح.");
+        }
     }
 
     function createNewRoom() {
@@ -230,7 +293,7 @@
             });
 
             database.ref('rooms/' + code + '/subtitleUrl').on('value', s => {
-                if (s.val() && drivePlayer.style.display === 'none') {
+                if (s.val() && video.style.display === 'block') {
                     videoTrack.src = s.val();
                     videoTrack.track.mode = "showing";
                 }
@@ -251,6 +314,7 @@
             showCinemaLayout(code);
             document.getElementById('adminInputs').style.display = 'none';
             document.getElementById('viewerInputs').style.display = 'block';
+            joinStatus.textContent = '✅ تم الانضمام بنجاح!';
         });
     }
 
@@ -260,6 +324,7 @@
         if (url && myRole === 'ADMIN' && currentRoomCode) {
             smartPlay(url);
             database.ref('rooms/' + currentRoomCode).update({ videoUrl: url, subtitleUrl: subUrl, state: 'pause', currentTime: 0 });
+            document.getElementById('statusCard').textContent = "▶️ تم تحميل الفيديو، يمكنك استخدام أزرار التحكم.";
         }
     }
 
