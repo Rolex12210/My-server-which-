@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>سينما الحب 🍿❤️ - بث مشترك</title>
+    <title>سينما الحب 🍿❤️ - بث مشترك مع دعم جوجل درايف</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -19,38 +19,9 @@
         .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; margin: 5px auto; }
         .room-title { font-size: 18px; color: #e50914; font-weight: bold; margin-bottom: 5px; }
         .status-card { background: #222; padding: 8px; border-radius: 8px; color: #4caf50; font-size: 14px; margin: 5px 0; font-weight: bold; }
-        .video-wrapper {
-            width: 100%;
-            height: auto;
-            aspect-ratio: 16 / 9;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4);
-            background: #000;
-            overflow: hidden;
-            display: none;
-            position: relative;
-        }
-        video, iframe {
-            width: 100%;
-            height: 100%;
-            display: none;
-            background: #000;
-            object-fit: contain;
-        }
-        .fullscreen-btn {
-            display: none;
-            background: #0288d1;
-            color: white;
-            padding: 14px 20px;
-            font-size: 16px;
-            border-radius: 10px;
-            font-weight: bold;
-            width: 100%;
-            border: none;
-            cursor: pointer;
-            text-align: center;
-            box-shadow: 0 4px 10px rgba(2, 136, 209, 0.3);
-        }
+        .video-wrapper { width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4); background: #000; overflow: hidden; display: none; position: relative; }
+        video { width: 100%; height: 100%; display: none; background: #000; object-fit: contain; }
+        .fullscreen-btn { display: none; background: #0288d1; color: white; padding: 14px 20px; font-size: 16px; border-radius: 10px; font-weight: bold; width: 100%; border: none; cursor: pointer; text-align: center; box-shadow: 0 4px 10px rgba(2, 136, 209, 0.3); }
         .fullscreen-btn:active { background: #01579b; }
         .chat-card { background: #151515; border: 1px solid #222; border-radius: 12px; text-align: right; padding: 12px; display: none; width: 100%; }
         .chat-box { height: 110px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; display: flex; flex-direction: column; }
@@ -60,26 +31,22 @@
         .chat-input-row { width: 100%; display: flex; gap: 8px; align-items: center; }
         .chat-input-row input { margin-bottom: 0; flex-grow: 1; text-align: right; }
         .chat-input-row button { margin: 0; padding: 12px 15px; width: auto; }
+        .error-message { color: #ff6b6b; background-color: #2c1a1a; padding: 8px; border-radius: 8px; margin-top: 8px; font-size: 12px; text-align: center; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>سينما الحب 🍿❤️</h1>
-    <div id="usersBadge" class="badge" style="background:#333; display:none;">
-        المتواجدون حالياً بالغرفة: <span id="countDisplay" class="users-count">1</span>
-    </div>
+    <div id="usersBadge" class="badge" style="background:#333; display:none;">المتواجدون حالياً بالغرفة: <span id="countDisplay">1</span></div>
 
     <div class="card" id="setupCard">
-        <div style="margin-bottom: 15px;">
+        <div>
             <button id="adminBtn" style="background:#e50914;" onclick="setRole('ADMIN')">🎬 أنا المتحكم (مصطفى)</button>
             <button id="viewerBtn" class="btn-sec" onclick="setRole('VIEWER')">🍿 أنا المشاهد (نونة)</button>
         </div>
-        <div id="adminAction">
-            <button onclick="createNewRoom()">✨ إنشاء غرفة جديدة برقم قصير</button>
-        </div>
-        <div id="viewerAction" style="display:none; margin-top: 15px;">
+        <div id="adminAction"><button onclick="createNewRoom()">✨ إنشاء غرفة جديدة برقم قصير</button></div>
+        <div id="viewerAction" style="display:none; margin-top:15px;">
             <input type="number" id="roomCodeInput" placeholder="🔢 ادخلي رقم الغرفة...">
-            <br>
             <button onclick="joinExistingRoom()">💕 دخول الغرفة والاتصال بمصطفى</button>
             <p id="joinStatus" style="font-size:13px; color:#aaa;"></p>
         </div>
@@ -88,21 +55,19 @@
     <div class="card" id="broadcastCard" style="display:none;">
         <div class="room-title">🎥 رقم الغرفة: <span id="roomCodeDisplay">----</span></div>
         <div id="statusCard" class="status-card">🟢 النظام جاهز ومستقر تلقائياً</div>
-        <div id="adminInputs" style="margin-top: 15px;">
+        <div id="adminInputs">
             <input type="text" id="videoUrl" placeholder="🔗 ضع رابط قوقل درايف، فودو، أو m3u8 هنا...">
-            <br>
-            <input type="text" id="subtitleUrl" placeholder="✍️ رابط الترجمة webvtt (اختياري للمشغل العادي)...">
-            <br>
+            <input type="text" id="subtitleUrl" placeholder="✍️ رابط الترجمة webvtt (اختياري)...">
             <button onclick="loadVideo()">▶️ بث الحلقة فوراً</button>
+            <div id="adminError" class="error-message" style="display:none;"></div>
         </div>
-        <div id="viewerInputs" style="display:none; color: #aaa; margin-top:10px;">💖 انتظري مصطفى ليقوم ببث الفيلم...</div>
+        <div id="viewerInputs" style="display:none; color:#aaa;">💖 انتظري مصطفى ليقوم ببث الفيلم...</div>
     </div>
 
     <div class="video-wrapper" id="videoWrapper">
         <video id="videoPlayer" playsinline crossorigin="anonymous" controls>
             <track id="videoTrack" kind="subtitles" srclang="ar" label="العربية" default>
         </video>
-        <iframe id="drivePlayer" allow="autoplay; encrypted-media" allowfullscreen></iframe>
     </div>
 
     <button id="customFullscreenBtn" class="fullscreen-btn" onclick="goFullscreen()">📺 وضع ملء الشاشة الكاملة</button>
@@ -126,26 +91,75 @@
         messagingSenderId: "106569940197",
         appId: "1:106569940197:web:a5afbdb78e97eecc5f280c"
     };
-
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
     const video = document.getElementById('videoPlayer');
-    const drivePlayer = document.getElementById('drivePlayer');
     const videoWrapper = document.getElementById('videoWrapper');
     const videoTrack = document.getElementById('videoTrack');
     const countDisplay = document.getElementById('countDisplay');
-    const chatCard = document.getElementById('chatCard');
     const chatBox = document.getElementById('chatBox');
     const chatInput = document.getElementById('chatInput');
     const joinStatus = document.getElementById('joinStatus');
     const roomCodeDisplay = document.getElementById('roomCodeDisplay');
-    const customFullscreenBtn = document.getElementById('customFullscreenBtn');
-
+    const adminError = document.getElementById('adminError');
     let myRole = 'ADMIN';
     let currentRoomCode = null;
     let isSyncing = false;
     let hls = null;
+
+    function getGoogleDriveDirectLink(url) {
+        const patterns = [
+            /drive\.google\.com\/file\/d\/([^\/]+)\/view/,
+            /drive\.google\.com\/open\?id=([^&]+)/,
+            /drive\.google\.com\/uc\?id=([^&]+)/,
+            /drive\.google\.com\/file\/d\/([^\/]+)/
+        ];
+        for (let p of patterns) {
+            let m = url.match(p);
+            if (m) return `https://drive.google.com/uc?id=${m[1]}&export=download`;
+        }
+        return null;
+    }
+
+    function isValidGoogleDriveUrl(url) {
+        return /drive\.google\.com\/(file\/d\/|open\?id=|uc\?id=)/.test(url);
+    }
+
+    function smartPlay(url) {
+        if (!url) return;
+        video.style.display = 'block';
+        if (hls) { hls.destroy(); hls = null; }
+        let direct = getGoogleDriveDirectLink(url);
+        let finalUrl = direct || url;
+        if (finalUrl.includes('.m3u8')) {
+            if (Hls.isSupported()) {
+                hls = new Hls();
+                hls.loadSource(finalUrl);
+                hls.attachMedia(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = finalUrl;
+            } else {
+                document.getElementById('statusCard').innerHTML = "❌ المتصفح لا يدعم HLS";
+                return;
+            }
+        } else {
+            video.src = finalUrl;
+        }
+        video.load();
+        video.play().catch(e=>console.log("تشغيل تلقائي غير مسموح"));
+        let msg = direct ? "🎬 تم تحويل رابط جوجل درايف وتشغيله" : (finalUrl.includes('.m3u8') ? "📡 بث HLS" : "🎥 تم تحميل الفيديو");
+        document.getElementById('statusCard').innerHTML = msg;
+    }
+
+    function goFullscreen() {
+        if (video.requestFullscreen) video.requestFullscreen();
+        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+        else if (video.mozRequestFullScreen) video.mozRequestFullScreen();
+        else if (video.msRequestFullscreen) video.msRequestFullscreen();
+        else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+        else alert("متصفحك لا يدعم ملء الشاشة");
+    }
 
     function setRole(role) {
         myRole = role;
@@ -161,83 +175,8 @@
         roomCodeDisplay.textContent = code;
         document.getElementById('usersBadge').style.display = 'inline-block';
         videoWrapper.style.display = 'block';
-        chatCard.style.display = 'block';
-        customFullscreenBtn.style.display = 'block';
-    }
-
-    function smartPlay(url) {
-        if (!url) return;
-        
-        video.style.display = 'none';
-        drivePlayer.style.display = 'none';
-        
-        if (url.includes('drive.google.com') || url.includes('docs.google.com')) {
-            let fileId = '';
-            if (url.includes('/d/')) {
-                fileId = url.split('/d/')[1].split('/')[0];
-            } else if (url.includes('id=')) {
-                fileId = url.split('id=')[1].split('&')[0];
-            }
-            if (fileId) {
-                drivePlayer.style.display = 'block';
-                drivePlayer.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                document.getElementById('statusCard').textContent = "🎬 سيرفر Google Drive المباشر شغال!";
-                customFullscreenBtn.style.display = 'block';
-                return;
-            }
-        }
-
-        video.style.display = 'block';
-        if (hls) { hls.destroy(); hls = null; }
-
-        if (url.includes('.m3u8')) {
-            if (Hls.isSupported()) {
-                hls = new Hls();
-                hls.loadSource(url);
-                hls.attachMedia(video);
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-            }
-        } else {
-            video.src = url;
-        }
-        customFullscreenBtn.style.display = 'block';
-    }
-
-    // الحل النهائي لملء الشاشة
-    function goFullscreen() {
-        let elem = null;
-        if (video.style.display === 'block') {
-            elem = video;
-        } else if (drivePlayer.style.display === 'block') {
-            elem = drivePlayer;
-        } else {
-            elem = videoWrapper;
-        }
-        
-        if (!elem) {
-            alert('لا يوجد فيديو لتكبيره');
-            return;
-        }
-        
-        try {
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
-            } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen();
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
-            } else if (elem.webkitEnterFullscreen) {
-                elem.webkitEnterFullscreen();
-            } else {
-                alert('متصفحك لا يدعم ملء الشاشة');
-            }
-        } catch (err) {
-            console.error(err);
-            alert('حدث خطأ: ' + err.message);
-        }
+        document.getElementById('chatCard').style.display = 'block';
+        document.getElementById('customFullscreenBtn').style.display = 'block';
     }
 
     function createNewRoom() {
@@ -256,35 +195,27 @@
         const code = document.getElementById('roomCodeInput').value.trim();
         if (!code) return alert('الرجاء إدخال رقم الغرفة!');
         joinStatus.textContent = 'جاري الاتصال...';
-        
         database.ref('rooms/' + code).once('value', snap => {
             if (!snap.exists()) { joinStatus.textContent = '❌ الغرفة غير موجودة'; return; }
             currentRoomCode = code;
             database.ref('rooms/' + code + '/viewerPresent').set(true);
-
-            database.ref('rooms/' + code + '/videoUrl').on('value', s => {
-                if (s.val()) smartPlay(s.val());
-            });
-
+            database.ref('rooms/' + code + '/videoUrl').on('value', s => { if (s.val()) smartPlay(s.val()); });
             database.ref('rooms/' + code + '/subtitleUrl').on('value', s => {
                 if (s.val() && video.style.display === 'block') {
                     videoTrack.src = s.val();
                     videoTrack.track.mode = "showing";
                 }
             });
-
             database.ref('rooms/' + code + '/state').on('value', s => {
-                if (isSyncing || myRole === 'ADMIN' || drivePlayer.style.display === 'block') return;
+                if (isSyncing || myRole === 'ADMIN') return;
                 isSyncing = true;
                 if (s.val() === 'play') video.play().catch(()=>{});
                 else video.pause();
                 setTimeout(() => isSyncing = false, 200);
             });
-
             database.ref('rooms/' + code + '/chat').on('child_added', snap => {
                 if (snap.val().sender !== 'VIEWER') appendMessage(snap.val().text, 'partner');
             });
-
             showCinemaLayout(code);
             document.getElementById('adminInputs').style.display = 'none';
             document.getElementById('viewerInputs').style.display = 'block';
@@ -295,10 +226,22 @@
     function loadVideo() {
         const url = document.getElementById('videoUrl').value.trim();
         const subUrl = document.getElementById('subtitleUrl').value.trim();
-        if (url && myRole === 'ADMIN' && currentRoomCode) {
+        adminError.style.display = 'none';
+        if (!url) {
+            adminError.innerText = 'الرجاء إدخال رابط الفيديو';
+            adminError.style.display = 'block';
+            setTimeout(()=>adminError.style.display='none',3000);
+            return;
+        }
+        if (myRole === 'ADMIN' && currentRoomCode) {
+            if (isValidGoogleDriveUrl(url) && !getGoogleDriveDirectLink(url)) {
+                adminError.innerText = '⚠️ رابط جوجل درايف غير صالح أو الملف غير عام';
+                adminError.style.display = 'block';
+                setTimeout(()=>adminError.style.display='none',5000);
+                return;
+            }
             smartPlay(url);
             database.ref('rooms/' + currentRoomCode).update({ videoUrl: url, subtitleUrl: subUrl, state: 'pause', currentTime: 0 });
-            document.getElementById('statusCard').textContent = "▶️ تم تحميل الفيديو، يمكنك استخدام أزرار التحكم.";
         }
     }
 
@@ -313,13 +256,17 @@
         const text = chatInput.value.trim();
         if (text && currentRoomCode) {
             database.ref('rooms/' + currentRoomCode + '/chat').push({ text, sender: myRole });
-            appendMessage(text, 'me'); chatInput.value = '';
+            appendMessage(text, 'me');
+            chatInput.value = '';
         }
     }
     function handleChatKey(e) { if (e.key === 'Enter') sendChatMessage(); }
     function appendMessage(text, sender) {
-        const d = document.createElement('div'); d.className = `msg ${sender}`; d.textContent = text;
-        chatBox.appendChild(d); chatBox.scrollTop = chatBox.scrollHeight;
+        const d = document.createElement('div');
+        d.className = `msg ${sender}`;
+        d.textContent = text;
+        chatBox.appendChild(d);
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 </script>
 </body>
