@@ -8,23 +8,35 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { background-color: #111; color: #fff; font-family: Arial, sans-serif; text-align: center; padding: 20px; margin: 0; }
+        body { background-color: #111; color: #fff; font-family: Arial, sans-serif; text-align: center; padding: 15px; margin: 0; }
         .container { max-width: 800px; margin: 0 auto; }
-        h1 { color: #e50914; font-size: 26px; margin-bottom: 5px; }
-        .video-wrapper { position: relative; width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.5); background: #000; margin-top: 15px; overflow: hidden; display: none; }
-        video, iframe { width: 100%; height: 450px; border: none; display: none; background: #000; }
+        h1 { color: #e50914; font-size: 24px; margin-bottom: 5px; }
+        
+        /* ضبط حاوية الفيديو لمنع التداخل والأبعاد المفتوحة للموبايل */
+        .video-wrapper { width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4); background: #000; margin-top: 15px; overflow: hidden; display: none; }
+        video { width: 100%; height: auto; max-height: 450px; display: none; background: #000; }
+        
+        /* ضبط أبعاد الآيفريم مالت قوقل درايف ليكون متناسق 100% مع الشاشات */
+        iframe { width: 100%; height: 260px; border: none; display: none; background: #000; }
+        @media (min-width: 600px) { iframe { height: 450px; } }
+
         .card { background: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333; margin-top: 15px; }
-        input { width: 80%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; margin-bottom: 12px; text-align: center; font-size: 16px; }
-        button { padding: 12px 24px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin: 5px; }
+        input { width: 85%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; margin-bottom: 12px; text-align: center; font-size: 15px; }
+        
+        /* تنسيق الأزرار لمنع الخربطة والنزول بشكل مريح */
+        button { padding: 12px 20px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin: 8px auto; display: inline-block; }
         .btn-sec { background: #333; border: 1px solid #444; }
+        
         .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 10px; }
-        .room-title { font-size: 22px; color: #e50914; font-weight: bold; letter-spacing: 2px; }
-        .users-count { background: #2e7d32; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px; margin-left: 5px; }
-        .status-card { background: #222; padding: 10px; border-radius: 8px; color: #4caf50; font-size: 16px; margin: 10px 0; font-weight: bold; }
-        .fullscreen-btn { display: none; background: #0288d1; color: white; padding: 14px 28px; font-size: 16px; border-radius: 8px; font-weight: bold; margin-top: 15px; width: 85%; border: none; cursor: pointer; }
+        .room-title { font-size: 20px; color: #e50914; font-weight: bold; margin-bottom: 10px; }
+        .status-card { background: #222; padding: 10px; border-radius: 8px; color: #4caf50; font-size: 15px; margin: 10px 0; font-weight: bold; }
+        
+        /* زر الفول سكرين مالت نونة صار معزول وبحجم واضح جوة المشغل */
+        .fullscreen-btn { display: none; background: #0288d1; color: white; padding: 14px 20px; font-size: 16px; border-radius: 8px; font-weight: bold; margin: 15px auto; width: 90%; border: none; cursor: pointer; }
+        
         .chat-card { background: #151515; border: 1px solid #222; border-radius: 12px; margin-top: 20px; display: none; text-align: right; padding: 15px; }
-        .chat-box { height: 150px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; display: flex; flex-direction: column; }
-        .msg { margin: 4px 0; padding: 6px 12px; border-radius: 8px; max-width: 70%; word-wrap: break-word; }
+        .chat-box { height: 130px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; display: flex; flex-direction: column; }
+        .msg { margin: 4px 0; padding: 6px 12px; border-radius: 8px; max-width: 75%; }
         .msg.me { background: #e50914; color: white; align-self: flex-start; border-bottom-right-radius: 0; }
         .msg.partner { background: #333; color: white; align-self: flex-end; border-bottom-left-radius: 0; }
         .chat-input-row { display: flex; gap: 10px; }
@@ -86,7 +98,6 @@
 </div>
 
 <script>
-    // إعدادات الفايربيس المعتمدة مسبقاً مالتكم
     const firebaseConfig = {
         apiKey: "AIzaSyCu62w7jzvxYvxPFdd65FbACIYohoXQ3Yk",
         authDomain: "cenama-9093f.firebaseapp.com",
@@ -132,18 +143,14 @@
         document.getElementById('usersBadge').style.display = 'inline-block';
         videoWrapper.style.display = 'block';
         chatCard.style.display = 'block';
-        if (myRole === 'VIEWER') customFullscreenBtn.style.display = 'inline-block';
+        if (myRole === 'VIEWER') customFullscreenBtn.style.display = 'block';
     }
 
-    // الدالة السحرية الجديدة لفصل روابط الدرايف وتشغيلها بذكاء دون حظر
     function smartPlay(url) {
         if (!url) return;
         
-        // إذا كان الرابط يحتوي على قوقل درايف
         if (url.includes('drive.google.com') || url.includes('docs.google.com')) {
             let fileId = '';
-            
-            // استخراج الـ ID الذكي مهما كان شكل الرابط المدخل
             if (url.includes('/d/')) {
                 fileId = url.split('/d/')[1].split('/')[0];
             } else if (url.includes('id=')) {
@@ -151,18 +158,14 @@
             }
 
             if (fileId) {
-                // إخفاء المشغل الافتراضي وتشغيل مشغل قوقل الراقي المدمج
                 video.style.display = 'none';
                 drivePlayer.style.display = 'block';
-                // تحويل الرابط إلى صيغة الـ Preview المفتوحة عالمياً وعبر كل الشبكات دون كورس
                 drivePlayer.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                document.getElementById('statusCard').textContent = "🎬 تم تشغيل سيرفر Google Drive المباشر بنجاح!";
-                document.getElementById('statusCard').style.color = "#00e676";
+                document.getElementById('statusCard').textContent = "🎬 تم تشغيل سيرفر Google Drive بنجاح تامة!";
                 return;
             }
         }
 
-        // إذا كان الرابط عادي (فودو أو m3u8) يرجع للمشغل الأصلي
         drivePlayer.style.display = 'none';
         video.style.display = 'block';
 
@@ -188,13 +191,11 @@
         else if (p.mozRequestFullScreen) p.mozRequestFullScreen();
     }
 
-    // ========== إدارة الغرف والمزامنة ==========
     function createNewRoom() {
         currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
         database.ref('rooms/' + currentRoomCode).set({ videoUrl: '', subtitleUrl: '', state: 'pause', currentTime: 0 });
         database.ref('rooms/' + currentRoomCode + '/viewerPresent').on('value', snap => {
             countDisplay.textContent = snap.val() ? '2' : '1';
-            if(snap.val()) appendSystemMessage("💕 نونة دخلت الغرفة الآن!");
         });
         database.ref('rooms/' + currentRoomCode + '/chat').on('child_added', snap => {
             if (snap.val().sender !== 'ADMIN') appendMessage(snap.val().text, 'partner');
@@ -223,7 +224,6 @@
                 }
             });
 
-            // مزامنة أزرار التشغيل والايقاف للمشغل الافتراضي
             database.ref('rooms/' + code + '/state').on('value', s => {
                 if (isSyncing || myRole === 'ADMIN' || drivePlayer.style.display === 'block') return;
                 isSyncing = true;
@@ -247,15 +247,10 @@
         const subUrl = document.getElementById('subtitleUrl').value.trim();
         if (url && myRole === 'ADMIN' && currentRoomCode) {
             smartPlay(url);
-            if (subUrl && drivePlayer.style.display === 'none') {
-                videoTrack.src = subUrl;
-                videoTrack.track.mode = "showing";
-            }
             database.ref('rooms/' + currentRoomCode).update({ videoUrl: url, subtitleUrl: subUrl, state: 'pause', currentTime: 0 });
         }
     }
 
-    // التحكم بالتزامن للمشغل العادي
     video.addEventListener('play', () => {
         if (!isSyncing && myRole === 'ADMIN' && currentRoomCode) database.ref('rooms/' + currentRoomCode).update({ state: 'play' });
     });
@@ -263,7 +258,6 @@
         if (!isSyncing && myRole === 'ADMIN' && currentRoomCode) database.ref('rooms/' + currentRoomCode).update({ state: 'pause' });
     });
 
-    // الـ Chat
     function sendChatMessage() {
         const text = chatInput.value.trim();
         if (text && currentRoomCode) {
@@ -275,10 +269,6 @@
     function appendMessage(text, sender) {
         const d = document.createElement('div'); d.className = `msg ${sender}`; d.textContent = text;
         chatBox.appendChild(d); chatBox.scrollTop = chatBox.scrollHeight;
-    }
-    function appendSystemMessage(text) {
-        const d = document.createElement('div'); d.style.cssText = 'color:#4caf50;font-size:12px;text-align:center;margin:5px 0';
-        d.textContent = text; chatBox.appendChild(d);
     }
 </script>
 </body>
