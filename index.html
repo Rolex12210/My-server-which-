@@ -3,42 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سينما الحب 🍿 - النسخة المستقرة</title>
+    <title>سينما الحب 🎬 - مع ترجمة وتحكم أفضل</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0a0a0a; color: white; font-family: Arial; padding: 15px; }
-        .container { max-width: 800px; margin: auto; }
-        .card { background: #1e1e2a; border-radius: 20px; padding: 20px; margin-bottom: 20px; }
-        button, input { padding: 10px; border-radius: 30px; border: none; margin: 5px; }
-        button { background: #e50914; color: white; cursor: pointer; font-weight: bold; }
-        input { background: #2a2a2a; color: white; width: calc(100% - 20px); }
-        iframe, video { width: 100%; height: 400px; border-radius: 16px; background: black; display: none; }
-        .status { font-size: 13px; color: #4caf50; margin: 10px 0; }
-        .chat-box { height: 180px; overflow-y: auto; background: #111; border-radius: 16px; padding: 10px; margin: 10px 0; }
-        .msg { padding: 8px 12px; border-radius: 20px; margin: 5px; max-width: 70%; }
-        .msg.me { background: #e50914; align-self: flex-start; }
-        .msg.partner { background: #333; align-self: flex-end; text-align: right; }
-        .flex { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0a; color: white; font-family: Arial, sans-serif; padding: 15px; }
+        .container { max-width: 1000px; margin: auto; }
+        .card { background: #1e1e2a; border-radius: 24px; padding: 20px; margin-bottom: 20px; }
+        input, button { padding: 12px 18px; border-radius: 40px; border: none; margin: 5px; font-size: 14px; }
+        input { background: #2a2a2a; color: white; width: calc(100% - 30px); }
+        button { background: #e50914; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .flex { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        /* حاوية الفيديو بنسبة 16:9 */
+        .video-container { position: relative; width: 100%; padding-bottom: 56.25%; background: black; border-radius: 20px; overflow: hidden; margin-bottom: 10px; }
+        .video-container iframe, .video-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; display: none; }
+        .status { background: #222; padding: 8px 15px; border-radius: 30px; font-size: 13px; display: inline-block; margin: 10px 0; }
+        .chat-box { height: 200px; overflow-y: auto; background: #111; border-radius: 20px; padding: 12px; margin: 15px 0; display: flex; flex-direction: column; }
+        .msg { max-width: 75%; padding: 8px 15px; border-radius: 20px; margin: 5px 0; }
+        .msg.me { background: #e50914; align-self: flex-start; border-bottom-left-radius: 5px; }
+        .msg.partner { background: #333; align-self: flex-end; border-bottom-right-radius: 5px; }
+        .chat-input { display: flex; gap: 10px; }
+        .badge { background: #333; padding: 5px 12px; border-radius: 30px; font-size: 13px; display: inline-block; margin: 5px; }
+        .info-text { font-size: 12px; color: #aaa; text-align: center; margin-top: 8px; }
+        hr { border-color: #333; margin: 15px 0; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1 style="color:#e50914; text-align:center;">سينما الحب 🎬❤️</h1>
+    <h1 style="color:#e50914; text-align:center;">🎬 سينما الحب ❤️🍿</h1>
 
     <div class="card" id="roleCard">
         <div class="flex">
-            <button id="btnAdmin" onclick="setRole('admin')">🎬 أنا المصدر (مصطفى)</button>
-            <button id="btnViewer" onclick="setRole('viewer')">🍿 أنا المشاهد (نونة)</button>
+            <button id="adminBtn" onclick="setRole('admin')">🎬 أنا المصدر (مصطفى)</button>
+            <button id="viewerBtn" onclick="setRole('viewer')">🍿 أنا المشاهد (نونة)</button>
         </div>
-        <div id="adminCreateDiv">
-            <button onclick="createRoom()">✨ إنشاء غرفة جديدة</button>
-        </div>
-        <div id="viewerJoinDiv" style="display:none;">
+        <div id="adminCreate"><button onclick="createRoom()">✨ إنشاء غرفة جديدة</button></div>
+        <div id="viewerJoin" style="display:none;">
             <input type="text" id="roomCodeInput" placeholder="🔢 رقم الغرفة">
             <button onclick="joinRoom()">💕 دخول الغرفة</button>
-            <div id="joinError"></div>
+            <div id="joinError" class="info-text"></div>
         </div>
     </div>
 
@@ -46,36 +50,35 @@
         <div>🎥 رقم الغرفة: <strong id="roomCodeSpan"></strong> | 👥 المتصلون: <span id="userCount">1</span></div>
     </div>
 
-    <div id="videoContainer" class="card" style="display:none;">
-        <iframe id="driveFrame" allowfullscreen></iframe>
-        <video id="normalVideo" controls style="display:none;"></video>
-        <div class="flex" style="justify-content:center; margin-top:10px;">
-            <button id="fullscreenBtn" onclick="goFullscreen()">📺 ملء الشاشة</button>
+    <div id="videoSection" style="display:none;">
+        <div class="video-container" id="videoContainer">
+            <iframe id="driveFrame" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+            <video id="normalVideo" controls></video>
         </div>
-        <div id="videoStatus" class="status"></div>
+        <div class="flex"><button id="fullscreenBtn" onclick="goFullscreen()">📺 ملء الشاشة</button></div>
+        <div id="videoStatus" class="status">⚡ جاهز</div>
     </div>
 
     <div id="adminControls" class="card" style="display:none;">
-        <input type="text" id="videoUrlInput" placeholder="🔗 رابط الفيديو (Google Drive أو mp4 أو m3u8)">
-        <button onclick="publishVideo()">▶️ بث الحلقة الآن</button>
-        <div id="publishStatus"></div>
+        <input type="text" id="videoUrlInput" placeholder="🔗 رابط الفيديو (Google Drive, mp4, m3u8)">
+        <input type="text" id="subtitleUrlInput" placeholder="✍️ رابط الترجمة (WebVTT) - اختياري">
+        <div class="flex"><button onclick="publishVideo()">▶️ بث الحلقة الآن</button></div>
+        <div id="publishStatus" class="info-text"></div>
     </div>
 
-    <div id="viewerWait" class="card" style="display:none; text-align:center;">
-        💖 في انتظار بدء البث...
-    </div>
+    <div id="viewerWait" class="card" style="display:none; text-align:center;">💖 في انتظار أن يقوم مصطفى ببدء البث...</div>
 
     <div id="chatSection" class="card" style="display:none;">
-        <div class="chat-box" id="chatMessages"></div>
-        <div class="flex">
-            <input type="text" id="chatInput" placeholder="اكتب رسالة..." onkeypress="if(event.key==='Enter') sendMsg()">
-            <button onclick="sendMsg()">📨</button>
+        <div class="chat-box" id="chatBox"></div>
+        <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="✍️ اكتب رسالة..." onkeypress="if(event.key==='Enter') sendChat()">
+            <button onclick="sendChat()">📨 إرسال</button>
         </div>
     </div>
+    <div class="info-text">💡 نصيحة: استخدم زر "ملء الشاشة" للحصول على تجربة مشاهدة أفضل وتكبير أزرار التحكم بشكل طبيعي.</div>
 </div>
 
 <script>
-    // Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyCu62w7jzvxYvxPFdd65FbACIYohoXQ3Yk",
         authDomain: "cenama-9093f.firebaseapp.com",
@@ -88,69 +91,67 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // العناصر
     const driveFrame = document.getElementById('driveFrame');
     const normalVideo = document.getElementById('normalVideo');
-    const videoContainer = document.getElementById('videoContainer');
-    const adminControls = document.getElementById('adminControls');
-    const viewerWait = document.getElementById('viewerWait');
-    const chatSection = document.getElementById('chatSection');
-    const roomInfo = document.getElementById('roomInfo');
+    let myRole = null, currentRoom = null, isSyncing = false;
 
-    let myRole = null; // 'admin' or 'viewer'
-    let currentRoom = null;
-    let isSyncing = false;
-
-    // دالة استخراج رابط iframe من جوجل درايف
     function getDriveEmbedUrl(url) {
-        let match = url.match(/\/file\/d\/([^\/]+)/);
-        if (match) return `https://drive.google.com/file/d/${match[1]}/preview`;
-        match = url.match(/id=([^&]+)/);
-        if (match) return `https://drive.google.com/file/d/${match[1]}/preview`;
+        let m = url.match(/\/file\/d\/([^\/]+)/);
+        if (m) return `https://drive.google.com/file/d/${m[1]}/preview`;
+        m = url.match(/id=([^&]+)/);
+        if (m) return `https://drive.google.com/file/d/${m[1]}/preview`;
         return null;
     }
 
-    // تشغيل الفيديو (تحديد iframe أو video)
-    function displayVideo(url) {
+    function displayVideo(url, subUrl = null) {
         driveFrame.style.display = 'none';
         normalVideo.style.display = 'none';
         let embed = getDriveEmbedUrl(url);
         if (embed) {
             driveFrame.src = embed;
             driveFrame.style.display = 'block';
-            document.getElementById('videoStatus').innerText = '🎬 فيديو جوجل درايف يعمل الآن';
-            return true;
+            document.getElementById('videoStatus').innerHTML = '🎬 فيديو جوجل درايف يعمل الآن';
         } else {
             normalVideo.src = url;
             normalVideo.style.display = 'block';
-            document.getElementById('videoStatus').innerText = '🎥 فيديو عادي';
-            return true;
+            if (subUrl) {
+                let track = normalVideo.querySelector('track');
+                if (!track) {
+                    track = document.createElement('track');
+                    track.kind = 'subtitles';
+                    track.srclang = 'ar';
+                    track.label = 'العربية';
+                    normalVideo.appendChild(track);
+                }
+                track.src = subUrl;
+                track.default = true;
+                normalVideo.textTracks[0].mode = 'showing';
+            }
+            document.getElementById('videoStatus').innerHTML = '🎥 فيديو عادي';
         }
     }
 
-    // ملء الشاشة
     function goFullscreen() {
         let elem = driveFrame.style.display === 'block' ? driveFrame : normalVideo;
         if (elem.requestFullscreen) elem.requestFullscreen();
         else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
         else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
         else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-        else alert("المتصفح لا يدعم ملء الشاشة");
+        else if (elem.webkitEnterFullscreen) elem.webkitEnterFullscreen();
+        else alert('المتصفح لا يدعم ملء الشاشة');
     }
 
-    // إظهار واجهة السينما بعد إنشاء/دخول الغرفة
-    function enterCinemaMode(roomCode) {
+    function showCinemaUI(code) {
         document.getElementById('roleCard').style.display = 'none';
-        roomInfo.style.display = 'block';
-        videoContainer.style.display = 'block';
-        chatSection.style.display = 'block';
-        document.getElementById('roomCodeSpan').innerText = roomCode;
+        document.getElementById('roomInfo').style.display = 'block';
+        document.getElementById('videoSection').style.display = 'block';
+        document.getElementById('chatSection').style.display = 'block';
+        document.getElementById('roomCodeSpan').innerText = code;
     }
 
-    // إنشاء غرفة (مصدر)
     function createRoom() {
         currentRoom = Math.floor(1000 + Math.random() * 9000).toString();
-        db.ref(`rooms/${currentRoom}`).set({ videoUrl: '', state: 'pause' });
+        db.ref(`rooms/${currentRoom}`).set({ videoUrl: '', subtitleUrl: '', state: 'pause' });
         db.ref(`rooms/${currentRoom}/viewerPresent`).set(false);
         db.ref(`rooms/${currentRoom}/viewerPresent`).on('value', snap => {
             document.getElementById('userCount').innerText = snap.val() ? '2' : '1';
@@ -158,34 +159,26 @@
         db.ref(`rooms/${currentRoom}/chat`).on('child_added', snap => {
             if (snap.val().sender !== 'admin') addMessage(snap.val().text, 'partner');
         });
-        enterCinemaMode(currentRoom);
-        adminControls.style.display = 'block';
-        viewerWait.style.display = 'none';
-        // تنظيف
-        document.getElementById('publishStatus').innerText = '';
+        showCinemaUI(currentRoom);
+        document.getElementById('adminControls').style.display = 'block';
+        document.getElementById('viewerWait').style.display = 'none';
     }
 
-    // انضمام مشاهد
     function joinRoom() {
         let code = document.getElementById('roomCodeInput').value.trim();
         if (!code) { document.getElementById('joinError').innerText = 'أدخل رقم الغرفة'; return; }
         currentRoom = code;
         db.ref(`rooms/${code}`).once('value', snap => {
-            if (!snap.exists()) {
-                document.getElementById('joinError').innerText = '❌ الغرفة غير موجودة';
-                return;
-            }
+            if (!snap.exists()) { document.getElementById('joinError').innerText = '❌ غرفة غير موجودة'; return; }
             db.ref(`rooms/${code}/viewerPresent`).set(true);
-            // استماع للفيديو
             db.ref(`rooms/${code}/videoUrl`).on('value', s => {
-                if (s.val()) displayVideo(s.val());
+                if (s.val()) db.ref(`rooms/${code}/subtitleUrl`).once('value', subSnap => displayVideo(s.val(), subSnap.val()));
             });
-            // مزامنة الحالة (تشغيل/إيقاف للفيديو العادي فقط)
             db.ref(`rooms/${code}/state`).on('value', s => {
                 if (isSyncing) return;
                 isSyncing = true;
                 if (normalVideo.style.display === 'block') {
-                    if (s.val() === 'play') normalVideo.play();
+                    if (s.val() === 'play') normalVideo.play().catch(e=>{});
                     else normalVideo.pause();
                 }
                 setTimeout(() => isSyncing = false, 200);
@@ -193,30 +186,23 @@
             db.ref(`rooms/${code}/chat`).on('child_added', snap => {
                 if (snap.val().sender !== 'viewer') addMessage(snap.val().text, 'partner');
             });
-            enterCinemaMode(code);
-            adminControls.style.display = 'none';
-            viewerWait.style.display = 'block';
-            document.getElementById('joinError').innerText = '';
+            showCinemaUI(code);
+            document.getElementById('adminControls').style.display = 'none';
+            document.getElementById('viewerWait').style.display = 'block';
         });
     }
 
-    // نشر الفيديو من المصدر
     function publishVideo() {
         if (myRole !== 'admin' || !currentRoom) return;
         let url = document.getElementById('videoUrlInput').value.trim();
-        if (!url) {
-            document.getElementById('publishStatus').innerText = '⚠️ الرجاء إدخال رابط';
-            return;
-        }
-        // معاينة للمصدر
-        displayVideo(url);
-        // حفظ في قاعدة البيانات
-        db.ref(`rooms/${currentRoom}`).update({ videoUrl: url, state: 'play' });
-        document.getElementById('publishStatus').innerText = '✅ تم بث الفيديو بنجاح';
+        let sub = document.getElementById('subtitleUrlInput').value.trim();
+        if (!url) { document.getElementById('publishStatus').innerText = '⚠️ الرجاء إدخال رابط'; return; }
+        displayVideo(url, sub);
+        db.ref(`rooms/${currentRoom}`).update({ videoUrl: url, subtitleUrl: sub, state: 'play' });
+        document.getElementById('publishStatus').innerText = '✅ تم البث';
         setTimeout(() => document.getElementById('publishStatus').innerText = '', 3000);
     }
 
-    // أحداث الفيديو للمزامنة (للوسائط العادية)
     normalVideo.addEventListener('play', () => {
         if (!isSyncing && myRole === 'admin' && currentRoom) db.ref(`rooms/${currentRoom}/state`).set('play');
     });
@@ -224,8 +210,7 @@
         if (!isSyncing && myRole === 'admin' && currentRoom) db.ref(`rooms/${currentRoom}/state`).set('pause');
     });
 
-    // الشات
-    function sendMsg() {
+    function sendChat() {
         let txt = document.getElementById('chatInput').value.trim();
         if (txt && currentRoom) {
             db.ref(`rooms/${currentRoom}/chat`).push({ text: txt, sender: myRole });
@@ -234,29 +219,23 @@
         }
     }
     function addMessage(txt, type) {
-        let div = document.createElement('div');
-        div.className = `msg ${type === 'me' ? 'me' : 'partner'}`;
-        div.innerText = txt;
-        document.getElementById('chatMessages').appendChild(div);
-        div.scrollIntoView({ behavior: 'smooth' });
+        let d = document.createElement('div');
+        d.className = `msg ${type === 'me' ? 'me' : 'partner'}`;
+        d.innerText = txt;
+        document.getElementById('chatBox').appendChild(d);
+        d.scrollIntoView({ behavior: 'smooth' });
     }
 
-    // تبديل الدور
     function setRole(role) {
         myRole = role;
-        document.getElementById('btnAdmin').style.background = role === 'admin' ? '#e50914' : '#333';
-        document.getElementById('btnViewer').style.background = role === 'viewer' ? '#e50914' : '#333';
-        document.getElementById('adminCreateDiv').style.display = role === 'admin' ? 'block' : 'none';
-        document.getElementById('viewerJoinDiv').style.display = role === 'viewer' ? 'block' : 'none';
+        document.getElementById('adminBtn').style.background = role === 'admin' ? '#e50914' : '#333';
+        document.getElementById('viewerBtn').style.background = role === 'viewer' ? '#e50914' : '#333';
+        document.getElementById('adminCreate').style.display = role === 'admin' ? 'block' : 'none';
+        document.getElementById('viewerJoin').style.display = role === 'viewer' ? 'block' : 'none';
     }
 
-    // ربط الدوال بالwindow
-    window.setRole = setRole;
-    window.createRoom = createRoom;
-    window.joinRoom = joinRoom;
-    window.publishVideo = publishVideo;
-    window.sendMsg = sendMsg;
-    window.goFullscreen = goFullscreen;
+    window.setRole = setRole; window.createRoom = createRoom; window.joinRoom = joinRoom;
+    window.publishVideo = publishVideo; window.sendChat = sendChat; window.goFullscreen = goFullscreen;
 </script>
 </body>
 </html>
