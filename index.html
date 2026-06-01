@@ -8,39 +8,44 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { background-color: #111; color: #fff; font-family: Arial, sans-serif; text-align: center; padding: 15px; margin: 0; }
-        .container { max-width: 800px; margin: 0 auto; }
-        h1 { color: #e50914; font-size: 24px; margin-bottom: 5px; }
+        * { box-sizing: border-box; }
+        body { background-color: #111; color: #fff; font-family: Arial, sans-serif; text-align: center; padding: 10px; margin: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding-bottom: 30px; }
+        h1 { color: #e50914; font-size: 22px; margin: 10px 0 5px 0; }
         
-        /* ضبط حاوية الفيديو لمنع التداخل والأبعاد المفتوحة للموبايل */
-        .video-wrapper { width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4); background: #000; margin-top: 15px; overflow: hidden; display: none; }
-        video { width: 100%; height: auto; max-height: 450px; display: none; background: #000; }
+        /* كروت التحكم والبث */
+        .card { background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; margin-top: 10px; }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; margin-bottom: 10px; text-align: center; font-size: 14px; }
         
-        /* ضبط أبعاد الآيفريم مالت قوقل درايف ليكون متناسق 100% مع الشاشات */
-        iframe { width: 100%; height: 260px; border: none; display: none; background: #000; }
-        @media (min-width: 600px) { iframe { height: 450px; } }
-
-        .card { background: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333; margin-top: 15px; }
-        input { width: 85%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; margin-bottom: 12px; text-align: center; font-size: 15px; }
-        
-        /* تنسيق الأزرار لمنع الخربطة والنزول بشكل مريح */
-        button { padding: 12px 20px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin: 8px auto; display: inline-block; }
+        button { padding: 12px 20px; background: #e50914; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; margin: 5px auto; display: inline-block; }
         .btn-sec { background: #333; border: 1px solid #444; }
         
-        .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 10px; }
-        .room-title { font-size: 20px; color: #e50914; font-weight: bold; margin-bottom: 10px; }
-        .status-card { background: #222; padding: 10px; border-radius: 8px; color: #4caf50; font-size: 15px; margin: 10px 0; font-weight: bold; }
+        .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-top: 5px; }
+        .room-title { font-size: 18px; color: #e50914; font-weight: bold; margin-bottom: 5px; }
+        .status-card { background: #222; padding: 8px; border-radius: 8px; color: #4caf50; font-size: 14px; margin: 5px 0; font-weight: bold; }
+
+        /* حاوية الفيديو المعزولة هندسياً لمنع خروج أزرار قوقل */
+        .video-wrapper { width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4); background: #000; margin-top: 15px; overflow: hidden; display: none; position: relative; }
+        video { width: 100%; height: auto; display: none; background: #000; }
         
-        /* زر الفول سكرين مالت نونة صار معزول وبحجم واضح جوة المشغل */
-        .fullscreen-btn { display: none; background: #0288d1; color: white; padding: 14px 20px; font-size: 16px; border-radius: 8px; font-weight: bold; margin: 15px auto; width: 90%; border: none; cursor: pointer; }
+        /* تحديد أبعاد صارمة وثابتة للأيفريم تمنع تمدده بالموبايل */
+        iframe { width: 100%; height: 280px; border: none; display: none; background: #000; vertical-align: bottom; }
+        @media (min-width: 600px) { iframe { height: 400px; } }
+
+        /* زر تكبير الشاشة المخصص لنونة */
+        .fullscreen-btn { display: none; background: #0288d1; color: white; padding: 12px 20px; font-size: 15px; border-radius: 8px; font-weight: bold; margin: 12px auto; width: 100%; border: none; cursor: pointer; }
         
-        .chat-card { background: #151515; border: 1px solid #222; border-radius: 12px; margin-top: 20px; display: none; text-align: right; padding: 15px; }
-        .chat-box { height: 130px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; display: flex; flex-direction: column; }
+        /* كارت الشات المنفصل تماماً */
+        .chat-card { background: #151515; border: 1px solid #222; border-radius: 12px; margin-top: 15px; display: none; text-align: right; padding: 12px; clear: both; }
+        .chat-box { height: 120px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; display: flex; flex-direction: column; }
         .msg { margin: 4px 0; padding: 6px 12px; border-radius: 8px; max-width: 75%; }
         .msg.me { background: #e50914; color: white; align-self: flex-start; border-bottom-right-radius: 0; }
         .msg.partner { background: #333; color: white; align-self: flex-end; border-bottom-left-radius: 0; }
-        .chat-input-row { display: flex; gap: 10px; }
-        .chat-input-row input { margin-bottom: 0; flex-grow: 1; text-align: right; }
+        
+        /* تصميم صف الشات المعدل هندسياً بدون فليكس لتفادي مشاكل الأيفون */
+        .chat-input-row { width: 100%; display: block; overflow: hidden; margin-top: 5px; }
+        .chat-input-row input { width: 78%; float: right; margin-bottom: 0; }
+        .chat-input-row button { width: 18%; float: left; margin: 0; padding: 11px 0; }
     </style>
 </head>
 <body>
@@ -52,7 +57,7 @@
 
     <div class="card" id="setupCard">
         <div style="margin-bottom: 15px;">
-            <button id="adminBtn" class="active-role" style="background:#e50914;" onclick="setRole('ADMIN')">🎬 أنا المتحكم (مصطفى)</button>
+            <button id="adminBtn" style="background:#e50914;" onclick="setRole('ADMIN')">🎬 أنا المتحكم (مصطفى)</button>
             <button id="viewerBtn" class="btn-sec" onclick="setRole('VIEWER')">🍿 أنا المشاهد (نونة)</button>
         </div>
         <div id="adminAction">
@@ -161,7 +166,7 @@
                 video.style.display = 'none';
                 drivePlayer.style.display = 'block';
                 drivePlayer.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                document.getElementById('statusCard').textContent = "🎬 تم تشغيل سيرفر Google Drive بنجاح تامة!";
+                document.getElementById('statusCard').textContent = "🎬 سيرفر Google Drive المباشر شغال!";
                 return;
             }
         }
